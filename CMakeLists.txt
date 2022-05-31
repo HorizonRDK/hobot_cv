@@ -27,11 +27,11 @@ ${PROJECT_SOURCE_DIR}
 )
 
 include_directories(
-  ${SYS_ROOT}/usr/include/opencv/
+  ${CMAKE_SYSROOT}/usr/include/opencv/
 )
 
 link_directories(
-  ${SYS_ROOT}/usr/lib/hbbpu/
+  ${CMAKE_SYSROOT}/usr/lib/hbbpu/
 )
 
 SET(LINK_LIBS dnn opencv_world)
