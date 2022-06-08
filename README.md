@@ -10,7 +10,6 @@ hobot_cv package是地平线机器人开发平台的一部分，为应用开发�
 ## 依赖库
 
 - dnn:1.8.4
-- easydnn:0.3.3
 - opencv:3.4.5
 
 ## 开发环境
@@ -67,6 +66,36 @@ hobot_cv package是地平线机器人开发平台的一部分，为应用开发�
 ## package说明
   源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize。
 
+## 接口说明
+int hobotcv_resize(cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, int dst_w);
+功能介绍：nv12格式图片的resize功能。
+返回值：成功返回0，失败返回非零错误码。
+参数：
+| 参数名  | 解释          |
+| ------ | ------------- |
+| src | 原nv12格式的图像矩阵 |
+| src_h | 原图高 |
+| sc_w | 原图宽 |
+| dst | resize后的图像矩阵 |
+| dst_h | resize后的高 |
+| dst_w | resize后的宽 |
+         
+cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w, const cv::Range& rowRange, const cv::Range& colRange);
+功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。
+返回值：crop&resize之后的nv12图像矩阵。
+参数：
+| 参数名  | 解释          |
+| ------ | ------------- |
+| src | 原nv12格式的图像矩阵 |
+| src_h | 原图高 |
+| sc_w | 原图宽 |
+| dst_h | resize后的高 |
+| dst_w | resize后的宽 |
+| rowRange | crop的纵向坐标范围 |
+| colRange | crop的横向坐标范围 |
+注意：crop区域要在图片范围内
+
+
 ## 运行
 - 编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行。
 
@@ -97,3 +126,24 @@ cp -r install/lib/hobot_cv/config/ .
 ./install/lib/hobot_cv/example
 
 ```
+
+# 结果分析
+
+## X3结果展示
+```
+[BPU_PLAT]BPU Platform Version(1.3.1)!
+[HBRT] set log level as 0. version = 3.13.27
+[DNN] Runtime version = 1.8.4_(3.13.27 HBRT)
+resize finish, time: 26ms
+crop finish, time: 0ms
+cropResize finish, time: 13ms
+```
+根据log显示，测试程序完成了resize，crop,cropResize的过程，分别耗时26ms，0ms，13ms
+原图展示
+![image](./config/test.jpg)
+resize效果展示
+![image](./resize.jpg)
+crop效果展示
+![image](./crop.jpg)
+cropResize效果展示
+![image](./cropResize.jpg)

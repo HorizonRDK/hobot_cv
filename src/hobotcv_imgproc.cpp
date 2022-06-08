@@ -6,11 +6,11 @@
 // reproduced, copied, transmitted, or used in any way for any purpose,
 // without the express written permission of Horizon Robotics Inc.
 
-#include "include/hobotcv_dnnresize.h"
+#include "include/hobotcv_imgproc.h"
 #include "include/utils.h"
 #include <iostream>
 
-namespace hobotcv
+namespace hobot_cv
 {
     int hobotcv_resize(cv::Mat &src, int src_h, int src_w,
                        cv::Mat &dst, int dst_h, int dst_w)
@@ -33,16 +33,19 @@ namespace hobotcv
         if (0 != ret)
         {
             std::cout << "hbDNNResize failed!!" << std::endl;
+            return ret;
         }
         ret = hbDNNWaitTaskDone(task_handle, 0);
         if (0 != ret)
         {
             std::cout << "hbDNNWaitTaskDone failed!!" << std::endl;
+            return ret;
         }
         ret = hbDNNReleaseTask(task_handle);
         if (0 != ret)
         {
             std::cout << "release task  failed!!" << std::endl;
+            return ret;
         }
 
         size_t size = dst_h * dst_w * 3 / 2;
@@ -60,11 +63,12 @@ namespace hobotcv
             std::cout << "Free output_tensor mem failed!!" << std::endl;
             return ret;
         }
+        return 0;
     }
 
     cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w,
-                        int dst_h, int dst_w,
-                        const cv::Range &rowRange, const cv::Range &colRange)
+                         int dst_h, int dst_w,
+                         const cv::Range &rowRange, const cv::Range &colRange)
     {
         hbDNNRoi roi;
         roi.left = colRange.start;
@@ -77,7 +81,7 @@ namespace hobotcv
         {
             size_t size = dst_h * dst_w * 3 / 2;
             cv::Mat dst(dst_h * 3 / 2, dst_w, CV_8UC1);
-            auto srcdata = reinterpret_cast<const uint8_t*>(src.data);
+            auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
             auto dstdata = dst.data;
             // copy y
             for (int h = 0; h < dst_h; ++h)
@@ -114,10 +118,12 @@ namespace hobotcv
         if (roi.right == 0 && roi.bottom == 0)
         {
             ret = hbDNNResize(&task_handle, &output_tensor,
-                               &input_tensor, nullptr, &ctrl);
-        } else {
+                              &input_tensor, nullptr, &ctrl);
+        }
+        else
+        {
             ret = hbDNNResize(&task_handle, &output_tensor,
-                               &input_tensor, &roi, &ctrl);
+                              &input_tensor, &roi, &ctrl);
         }
 
         if (0 != ret)
@@ -152,4 +158,4 @@ namespace hobotcv
         }
         return dst;
     }
-}  // namespace hobotcv
+} // namespace hobot_cv

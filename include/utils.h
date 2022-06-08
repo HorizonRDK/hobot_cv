@@ -6,13 +6,16 @@
 // reproduced, copied, transmitted, or used in any way for any purpose,
 // without the express written permission of Horizon Robotics Inc.
 
-#ifndef HOBOTCV_INCLUDE_HOBOTCV_UTILS_HPP_
-#define HOBOTCV_INCLUDE_HOBOTCV_UTILS_HPP_
+#ifndef HOBOT_CV_INCLUDE_UTILS_HPP_
+#define HOBOT_CV_INCLUDE_UTILS_HPP_
 
 #include <memory>
 #include <string>
 
 #include "dnn/hb_dnn.h"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #define ALIGNED_2E(w, alignment) \
   ((static_cast<uint32_t>(w) + (alignment - 1U)) & (~(alignment - 1U)))
@@ -30,5 +33,7 @@ void prepare_nv12_tensor_without_padding(int image_height,
                           int image_width,
                           hbDNNTensor *tensor);
 
+int32_t BGRToNv12(cv::Mat &bgr_mat, cv::Mat &img_nv12);
 
-#endif  // HOBOTCV_INCLUDE_HOBOTCV_UTILS_HPP_
+
+#endif  // HOBOT_CV_INCLUDE_UTILS_HPP_

@@ -36,10 +36,10 @@ link_directories(
 
 SET(LINK_LIBS dnn opencv_world)
 
-add_library(${PROJECT_NAME} SHARED src/utils.cpp src/hobotcv_dnnresize.cpp )
+add_library(${PROJECT_NAME} SHARED src/utils.cpp src/hobotcv_imgproc.cpp)
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 
-add_executable(example src/example.cpp)
+add_executable(example src/test.cpp)
 target_link_libraries(example
   ${LINK_LIBS}
   ${PROJECT_NAME})
@@ -55,7 +55,7 @@ install(TARGETS ${PROJECT_NAME}
 
 # Install include files
 install(
-  FILES include/hobotcv_dnnresize.h
+  FILES include/hobotcv_imgproc.h
   DESTINATION include/${PROJECT_NAME}/
 )
 
