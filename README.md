@@ -5,6 +5,8 @@ Getting Started with hobot_cv
 
 hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供类似OpenCV接口。目前实现了图片的crop，resize，crop&resize功能，暂时只支持nv12格式。
 
+hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x240的CV_16UC1格式TOF数据，高斯核为3x3，且sigma均为0。
+
 # 编译
 
 ## 依赖库
@@ -64,9 +66,11 @@ hobot_cv package是地平线机器人开发平台的一部分，为应用开发�
 # 使用介绍
 
 ## package说明
-  源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize。
+  源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，高斯滤波。
 
 ## 接口说明
+### crop&resize
+
 int hobotcv_resize(cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, int dst_w);
 功能介绍：nv12格式图片的resize功能。
 返回值：成功返回0，失败返回非零错误码。
@@ -95,6 +99,53 @@ cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w, c
 | colRange | crop的横向坐标范围   |
 注意：crop区域要在图片范围内
 
+### 高斯滤波
+
+int HobotCVGaussianBlurCreate(HobotGaussianBlurParam param, HobotCVGaussianBlurHandle *phandle);
+功能介绍：创建高斯滤波的句柄。
+返回值：0表示成功，<0表示失败。
+参数：
+
+| 参数名   | 解释               |
+| -------- | ------------------ |
+| param：  | 高斯滤波           |
+| --type   | 滤波类型           |
+| --width  | 滤波的宽           |
+| --height | 滤波的高           |
+| --ksizeX | 滤波核的宽         |
+| --ksizeY | 滤波核的高         |
+| --sigmaX | sigma的宽          |
+| --sigmaY | sigma的高          |
+| phandle  | 创建成功返回的句柄 |
+
+注：当前版本支持的参数范围如下：
+
+- 滤波类型：高斯滤波
+- 支持的数据类型：int16
+- 支持的分辨率：320x240。
+- 滤波核：高斯3x3
+- sigmax: 0.
+- sigmay: 0.
+
+int HobotCVGaussianBlurProcess( HobotCVGaussianBlurHandle *phandle，cv::Mat *src，cv::Mat *dst);
+功能介绍：创建高斯滤波的句柄。
+返回值：0表示成功，<0表示失败。
+参数：
+
+| 参数名  | 解释                |
+| ------- | ------------------- |
+| phandle | 创建成功返回的句柄  |
+| src     | 原始的TOF数据矩阵   |
+| dst     | 滤波后的TOF数据矩阵 |
+
+int HobotCVGaussianBlurDestroy( HobotCVGaussianBlurHandle *phandle);
+功能介绍：创建高斯滤波的句柄。
+返回值：0表示成功，<0表示失败。
+参数：
+
+| 参数名  | 解释                         |
+| ------- | ---------------------------- |
+| phandle | 创建成功返回的句柄，用于释放 |
 
 ## 运行
 - 编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行。
@@ -108,8 +159,12 @@ source ./install/local_setup.bash
 # 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
 cp -r install/lib/hobot_cv/config/ .
 
-# 启动launch文件
+# 启动crop&resize launch文件
 ros2 launch hobot_cv hobot_cv_crop_resize.launch.py
+
+# 启动test_gaussian_blur launch文件
+使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
+ros2 launch hobot_cv hobot_cv_gaussian_blur.launch.py
 ```
 
 ## X3 yocto系统上运行
@@ -124,11 +179,17 @@ cp -r install/lib/hobot_cv/config/ .
 # 使用本地JPEG格式图片通过hobot_cv接口实现图片的crop，resize，并以JPEG格式存储变换后的图片
 ./install/lib/hobot_cv/example
 
+# 运行模式2：
+使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
+ros2 run hobot_cv test_gaussian_blur
 ```
 
 # 结果分析
 
 ## X3结果展示
+
+### crop&resize
+
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [example-1]: process started with pid [396814]
@@ -166,3 +227,51 @@ crop效果展示：
 crop&resize效果展示：
 
 ![image](./imgs/cropResize.jpg)
+
+### 高斯滤波
+
+```
+输出结果：
+
+===================
+image name :images/frame1_4.png
+infe cost time:1314
+guss_time cost time:2685
+hobotcv save rate:0.510615
+
+analyse_result start 
+---------GaussianBlur
+out_filter type:2,cols:320,rows:240,channel:1
+cls_filter type:2,cols:320,rows:240,channel:1
+out_filter minvalue:96,max:2363
+out_filter min,x:319,y:115
+out_filter max,x:147,y:239
+cls_filter minvalue:96,max:2364
+cls_filter min,x:319,y:115
+cls_filter max,x:147,y:239
+
+diff diff diff
+mat_diff minvalue:0,max:2
+mat_diff min,x:2,y:0
+mat_diff max,x:110,y:14
+
+error sum:8.46524e+06,max:2,mean_error:0.439232
+analyse_result,time_used_ms_end:2
+analyse_result end 
+
+------------------------- 
+```
+
+其中：
+
+infe cost time:1314　//表示hobotcv加速的高斯滤波耗时1314微秒．
+
+guss_time cost time:2685　//表示opencv的高斯滤波耗时2685微秒．
+
+hobotcv save rate = （guss_time cost time - infe cost time）/ guss_time cost time = 0.510615
+
+从以上比较结果，经过hobotcv加速后性能提升50%。
+
+error sum:8.46524e+06,max:2,mean_error:0.439232　//单张图片总误差是：8.46524e+06，单个像素最大误差是：２，平均误差：0.439232
+
+平均误差　＝　sum / (width * height) = 8.46524e+06 / (320 * 240)

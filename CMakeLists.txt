@@ -50,11 +50,16 @@ link_directories(
 
 SET(LINK_LIBS dnn opencv_world)
 
-add_library(${PROJECT_NAME} SHARED src/utils.cpp src/hobotcv_imgproc.cpp)
+add_library(${PROJECT_NAME} SHARED src/utils.cpp src/hobotcv_imgproc.cpp src/hobotcv_gaussian_blur.cpp src/hobotcv_gaussian_blur_imp.cpp)
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 
 add_executable(example src/test.cpp)
 target_link_libraries(example
+  ${LINK_LIBS}
+  ${PROJECT_NAME})
+
+add_executable(test_gaussian_blur test/test_gaussian_blur.cpp)
+target_link_libraries(test_gaussian_blur
   ${LINK_LIBS}
   ${PROJECT_NAME})
 
@@ -70,12 +75,14 @@ install(TARGETS ${PROJECT_NAME}
 # Install include files
 install(
   FILES include/hobotcv_imgproc.h
+  FILES include/hobotcv_gaussian_blur.h
+  FILES include/hobotcv_gaussian_blur_imp.hpp
   DESTINATION include/${PROJECT_NAME}/
 )
 
 # Install executables
 install(
-  TARGETS example
+  TARGETS example test_gaussian_blur
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
