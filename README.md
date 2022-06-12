@@ -71,28 +71,28 @@ int hobotcv_resize(cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, 
 功能介绍：nv12格式图片的resize功能。
 返回值：成功返回0，失败返回非零错误码。
 参数：
-| 参数名  | 解释          |
-| ------ | ------------- |
-| src | 原nv12格式的图像矩阵 |
-| src_h | 原图高 |
-| sc_w | 原图宽 |
-| dst | resize后的图像矩阵 |
-| dst_h | resize后的高 |
-| dst_w | resize后的宽 |
+| 参数名 | 解释                 |
+| ------ | -------------------- |
+| src    | 原nv12格式的图像矩阵 |
+| src_h  | 原图高               |
+| sc_w   | 原图宽               |
+| dst    | resize后的图像矩阵   |
+| dst_h  | resize后的高         |
+| dst_w  | resize后的宽         |
          
 cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w, const cv::Range& rowRange, const cv::Range& colRange);
 功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。
 返回值：crop&resize之后的nv12图像矩阵。
 参数：
-| 参数名  | 解释          |
-| ------ | ------------- |
-| src | 原nv12格式的图像矩阵 |
-| src_h | 原图高 |
-| sc_w | 原图宽 |
-| dst_h | resize后的高 |
-| dst_w | resize后的宽 |
-| rowRange | crop的纵向坐标范围 |
-| colRange | crop的横向坐标范围 |
+| 参数名   | 解释                 |
+| -------- | -------------------- |
+| src      | 原nv12格式的图像矩阵 |
+| src_h    | 原图高               |
+| sc_w     | 原图宽               |
+| dst_h    | resize后的高         |
+| dst_w    | resize后的宽         |
+| rowRange | crop的纵向坐标范围   |
+| colRange | crop的横向坐标范围   |
 注意：crop区域要在图片范围内
 
 
@@ -105,12 +105,11 @@ cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w, c
 export COLCON_CURRENT_PREFIX=./install
 source ./install/local_setup.bash
 # config中为example使用的模型，回灌使用的本地图片
-# 根据实际安装路径进行拷贝（docker中的安装路径为install/lib/hobot_cv/config/，拷贝命令为cp -r install/lib/hobot_cv/config/ .）。
-cp -r install/hobot_cv/lib/hobot_cv/config/ .
+# 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
+cp -r install/lib/hobot_cv/config/ .
 
-# 运行模式1：
-使用本地nv12格式图片通过hobot_cv接口实现图片的crop，resize，并以jpg格式存储变换后的图片
-ros2 run hobot_cv example
+# 启动launch文件
+ros2 launch hobot_cv hobot_cv_crop_resize.launch.py
 ```
 
 ## X3 yocto系统上运行
@@ -122,7 +121,7 @@ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 # config中为example使用的模型，回灌使用的本地图片
 cp -r install/lib/hobot_cv/config/ .
 
-# 运行模式1：使用本地nv12格式图片通过hobot_cv接口实现图片的crop，resize，并以jpg格式存储变换后的图片
+# 使用本地JPEG格式图片通过hobot_cv接口实现图片的crop，resize，并以JPEG格式存储变换后的图片
 ./install/lib/hobot_cv/example
 
 ```
@@ -131,19 +130,39 @@ cp -r install/lib/hobot_cv/config/ .
 
 ## X3结果展示
 ```
-[BPU_PLAT]BPU Platform Version(1.3.1)!
-[HBRT] set log level as 0. version = 3.13.27
-[DNN] Runtime version = 1.8.4_(3.13.27 HBRT)
-resize finish, time: 26ms
-crop finish, time: 0ms
-cropResize finish, time: 13ms
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [example-1]: process started with pid [396814]
+[example-1] [BPU_PLAT]BPU Platform Version(1.3.1)!
+[example-1] [HBRT] set log level as 0. version = 3.13.27
+[example-1] [DNN] Runtime version = 1.8.4_(3.13.27 HBRT)
+[example-1] 
+[example-1] source image config/test.jpg is 1920x1080 pixels
+[example-1] resize image to 960x540 pixels, time cost: 30 ms
+[example-1] crop image to 960x540 pixels, time cost: 2 ms
+[example-1] crop image to 960x540 pixels and resize image to 1920x1080 pixels, time cost: 20 ms
+[example-1] 
+[INFO] [example-1]: process has finished cleanly [pid 396814]
 ```
-根据log显示，测试程序完成了resize，crop,cropResize的过程，分别耗时26ms，0ms，13ms
-原图展示
+
+根据log显示，测试程序完成了对本地1920x1080分辨率图片resize，crop，crop&resize的处理。
+
+从1920x1080分辨率图片resize到960x540分辨率，耗时为35 ms。
+
+从1920x1080分辨率图片crop出960x540分辨率的图片，耗时为2 ms。
+
+从1920x1080分辨率图片先crop出960x540分辨率的图片，再将crop出的图片resize到1920x1080分辨率，耗时为22 ms。
+
+原图展示：
 ![image](./config/test.jpg)
-resize效果展示
-![image](./resize.jpg)
-crop效果展示
-![image](./crop.jpg)
-cropResize效果展示
-![image](./cropResize.jpg)
+
+resize效果展示：
+
+![image](./imgs/resize.jpg)
+
+crop效果展示：
+
+![image](./imgs/crop.jpg)
+
+crop&resize效果展示：
+
+![image](./imgs/cropResize.jpg)

@@ -85,6 +85,10 @@ install(DIRECTORY
   DESTINATION lib/${PROJECT_NAME}/config/
 )
 
+install(DIRECTORY
+${PROJECT_SOURCE_DIR}/launch/
+DESTINATION share/${PROJECT_NAME}/launch)
+
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
 target_compile_definitions(${PROJECT_NAME}
