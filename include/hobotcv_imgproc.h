@@ -20,11 +20,16 @@
 
 namespace hobot_cv {
 
-  int hobotcv_resize(cv::Mat &src, int src_h, int src_w,
-                                cv::Mat &dst, int dst_h, int dst_w);
+int hobotcv_resize(
+    cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, int dst_w);
 
-  cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w,
-                const cv::Range& rowRange, const cv::Range& colRange);
+cv::Mat hobotcv_crop(cv::Mat &src,
+                     int src_h,
+                     int src_w,
+                     int dst_h,
+                     int dst_w,
+                     const cv::Range &rowRange,
+                     const cv::Range &colRange);
 
 }  // namespace hobot_cv
 

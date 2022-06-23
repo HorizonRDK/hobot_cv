@@ -13,13 +13,16 @@
 // limitations under the License.
 
 #include "include/utils.h"
-#include <iostream>
+
 #include <cstring>
+#include <iostream>
+
+#include "rclcpp/rclcpp.hpp"
 
 void prepare_nv12_tensor_without_padding(uint8_t *image_data,
-                                        int image_height,
-                                        int image_width,
-                                        hbDNNTensor *tensor) {
+                                         int image_height,
+                                         int image_width,
+                                         hbDNNTensor *tensor) {
   auto &properties = tensor->properties;
   properties.tensorType = HB_DNN_IMG_TYPE_NV12;
   properties.tensorLayout = HB_DNN_LAYOUT_NCHW;
@@ -42,8 +45,8 @@ void prepare_nv12_tensor_without_padding(uint8_t *image_data,
 }
 
 void prepare_nv12_tensor_without_padding(int image_height,
-                          int image_width,
-                          hbDNNTensor *tensor) {
+                                         int image_width,
+                                         hbDNNTensor *tensor) {
   auto &properties = tensor->properties;
   properties.tensorType = HB_DNN_IMG_TYPE_NV12;
   properties.tensorLayout = HB_DNN_LAYOUT_NCHW;

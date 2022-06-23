@@ -31,15 +31,14 @@
 #define ALIGN_64(w) ALIGNED_2E(w, 64U)
 
 void prepare_nv12_tensor_without_padding(uint8_t *image_data,
-                                        int image_height,
-                                        int image_width,
-                                        hbDNNTensor *tensor);
+                                         int image_height,
+                                         int image_width,
+                                         hbDNNTensor *tensor);
 
 void prepare_nv12_tensor_without_padding(int image_height,
-                          int image_width,
-                          hbDNNTensor *tensor);
+                                         int image_width,
+                                         hbDNNTensor *tensor);
 
 int32_t BGRToNv12(cv::Mat &bgr_mat, cv::Mat &img_nv12);
-
 
 #endif  // HOBOT_CV_INCLUDE_UTILS_HPP_

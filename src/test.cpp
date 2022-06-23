@@ -22,6 +22,7 @@
 #include "opencv2/core/types.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/opencv.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 void writeImg(cv::Mat &mat, std::string imgfile) {
   cv::Mat img_bgr;
@@ -48,13 +49,17 @@ int main() {
   auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                       after_resize - before_resize)
                       .count();
-  std::cout << "\n";
-  std::cout << "source image " << image_file << " is " << src_width << "x"
-            << src_height << " pixels" << std::endl;
+  std::stringstream ss;
+  ss << "\n"
+     << "source image " << image_file << " is " << src_width << "x"
+     << src_height << " pixels";
+  RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss.str().c_str());
   if (0 == ret) {
-    std::cout << "resize image to " << dst_width << "x" << dst_height
+    std::stringstream ss_resize;
+    ss_resize << "resize image to " << dst_width << "x" << dst_height
               << " pixels"
-              << ", time cost: " << interval << " ms" << std::endl;
+              << ", time cost: " << interval << " ms";
+    RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_resize.str().c_str());
   }
   writeImg(dstmat_nv12, "./resize.jpg");
 
@@ -70,8 +75,10 @@ int main() {
   interval = std::chrono::duration_cast<std::chrono::milliseconds>(after_crop -
                                                                    before_crop)
                  .count();
-  std::cout << "crop image to " << dst_width << "x" << dst_height << " pixels"
-            << ", time cost: " << interval << " ms" << std::endl;
+  std::stringstream ss_crop;
+  ss_crop << "crop image to " << dst_width << "x" << dst_height << " pixels"
+          << ", time cost: " << interval << " ms";
+  RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_crop.str().c_str());
   writeImg(cropmat, "./crop.jpg");
 
   auto before_cropResize = std::chrono::system_clock::now();
@@ -86,11 +93,14 @@ int main() {
   interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                  after_cropResize - before_cropResize)
                  .count();
-  std::cout << "crop image to " << dst_width << "x" << dst_height << " pixels"
-            << " and resize image to " << src_width << "x" << src_height
-            << " pixels"
-            << ", time cost: " << interval << " ms" << std::endl;
-  std::cout << "\n";
+  std::stringstream ss_cropResize;
+  ss_cropResize << "crop image to " << dst_width << "x" << dst_height
+                << " pixels"
+                << " and resize image to " << src_width << "x" << src_height
+                << " pixels"
+                << ", time cost: " << interval << " ms"
+                << "\n";
+  RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_cropResize.str().c_str());
   writeImg(cropResizemat, "./cropResize.jpg");
 
   return 0;
