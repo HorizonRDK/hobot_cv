@@ -46,17 +46,27 @@ include_directories(
 
 link_directories(
   ${CMAKE_SYSROOT}/usr/lib/hbbpu/
+  ${CMAKE_SYSROOT}/usr/lib/hbmedia/
 )
 
 SET(LINK_LIBS dnn opencv_world)
+SET(VPS_LIBS isp_algo z hbmedia isp ion multimedia iar tinyalsa cjson diag gdcbin vio dl)
 
-add_library(${PROJECT_NAME} SHARED src/utils.cpp src/hobotcv_imgproc.cpp src/hobotcv_gaussian_blur.cpp src/hobotcv_gaussian_blur_imp.cpp)
-target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+add_library(${PROJECT_NAME} SHARED 
+src/utils.cpp 
+src/hobotcv_imgproc/hobotcv_imgproc.cpp 
+src/hobotcv_imgproc/hobotcv_front.cpp
+src/hobotcv_imgproc/hobotcv_service.cpp
+src/hobotcv_gaussian_blur.cpp 
+src/hobotcv_gaussian_blur_imp.cpp)
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS})
+
 
 add_executable(example src/test.cpp)
 target_link_libraries(example
   ${LINK_LIBS}
-  ${PROJECT_NAME})
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
 
 add_executable(test_gaussian_blur test/test_gaussian_blur.cpp)
 target_link_libraries(test_gaussian_blur
@@ -74,7 +84,7 @@ install(TARGETS ${PROJECT_NAME}
 
 # Install include files
 install(
-  FILES include/hobotcv_imgproc.h
+  FILES include/hobotcv_imgproc/hobotcv_imgproc.h
   FILES include/hobotcv_gaussian_blur.h
   FILES include/hobotcv_gaussian_blur_imp.hpp
   DESTINATION include/${PROJECT_NAME}/

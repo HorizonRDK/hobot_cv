@@ -3,7 +3,7 @@ Getting Started with hobot_cv
 
 # 功能介绍
 
-hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供类似OpenCV接口。目前实现了图片的crop，resize，crop&resize功能，暂时只支持nv12格式。
+hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供类似OpenCV接口。目前实现了图片的crop, resize, rotate功能，只支持nv12格式。
 
 hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x240的CV_16UC1格式TOF数据，高斯核为3x3，且sigma均为0。
 
@@ -66,38 +66,62 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 # 使用介绍
 
 ## package说明
-  源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，高斯滤波。
+  源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，rotate, 高斯滤波。
 
 ## 接口说明
 ### crop&resize
 
-int hobotcv_resize(cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, int dst_w);
-功能介绍：nv12格式图片的resize功能。
-返回值：成功返回0，失败返回非零错误码。
+int hobotcv_resize(HOBOT_CV_TYPE type,
+                   const cv::Mat &src,
+                   cv::Mat &dst,
+                   int dst_h,
+                   int dst_w,
+                   const cv::Range &rowRange,
+                   const cv::Range &colRange);
+功能介绍：nv12格式图片的crop&resize功能。从原图中裁剪出指定范围，再将裁剪出来的图片进行放大。当crop区域为0时，则只进行resize操作。VPS类型最大放大1.5倍，最大缩小为原图片1/8。
+返回值：成功返回0，失败返回非零。
+注意：crop区域要在图片范围内
 参数：
 | 参数名 | 解释                 |
 | ------ | -------------------- |
+| type | 接口加速类型 0：BPU 1：VPS|
 | src    | 原nv12格式的图像矩阵 |
-| src_h  | 原图高               |
-| sc_w   | 原图宽               |
 | dst    | resize后的图像矩阵   |
 | dst_h  | resize后的高         |
 | dst_w  | resize后的宽         |
+| rowRange | crop的纵向坐标范围，范围为0时关闭crop|
+| colRange | crop的横向坐标范围，范围为0时关闭crop|
          
-cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w, const cv::Range& rowRange, const cv::Range& colRange);
-功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。
-返回值：crop&resize之后的nv12图像矩阵。
+int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
+功能介绍：将传入的图片进行旋转，只支持90，180，270度的旋转。
+返回值：成功返回0，失败返回非零。
 参数：
 | 参数名   | 解释                 |
 | -------- | -------------------- |
 | src      | 原nv12格式的图像矩阵 |
-| src_h    | 原图高               |
-| sc_w     | 原图宽               |
-| dst_h    | resize后的高         |
-| dst_w    | resize后的宽         |
-| rowRange | crop的纵向坐标范围   |
-| colRange | crop的横向坐标范围   |
-注意：crop区域要在图片范围内
+| dst      | 旋转后的图像矩阵   |
+| rotate   | 旋转角度的枚举  |
+         
+int hobotcv_imgproc(const cv::Mat &src,
+                    cv::Mat &dst,
+                    int dst_h,
+                    int dst_w,
+                    ROTATION_E rotate,
+                    const cv::Range &rowRange,
+                    const cv::Range &colRange);
+功能介绍：crop，resize，rotate的全功能接口。先在原图中裁剪指定区域，然后缩放，最后旋转。
+返回值：成功返回0，失败返回非零。
+注意：dst_h，dst_w是resize后的大小。无需考虑旋转后的宽高，接口会自动处理。例如，resize后的宽高为1920*1080，dst_w，dst_h传参分别为1920，1080。
+参数：
+| 参数名   | 解释                 |
+| -------- | -------------------- |
+| src      | 原nv12格式的图像矩阵 |
+| dst      | 用于接收处理后的图像矩阵 |
+| dst_h     | resize后的高         |
+| dst_w     | resize后的宽         |
+| rotate   | 旋转角度的枚举，为0时关闭rotate  |
+| rowRange | crop的纵向坐标范围，范围为0时关闭crop|
+| colRange | crop的横向坐标范围，范围为0时关闭crop|
 
 ### 高斯滤波
 

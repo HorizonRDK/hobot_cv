@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HOBOT_CV_INCLUDE_UTILS_HPP_
-#define HOBOT_CV_INCLUDE_UTILS_HPP_
+#ifndef UTILS_H
+#define UTILS_H
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "dnn/hb_dnn.h"
 #include "opencv2/core/mat.hpp"
@@ -41,4 +42,6 @@ void prepare_nv12_tensor_without_padding(int image_height,
 
 int32_t BGRToNv12(cv::Mat &bgr_mat, cv::Mat &img_nv12);
 
-#endif  // HOBOT_CV_INCLUDE_UTILS_HPP_
+uint64_t currentMicroseconds();
+
+#endif  // UTILS_H
