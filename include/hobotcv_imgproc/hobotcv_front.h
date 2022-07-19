@@ -34,28 +34,30 @@
 #define INPUT_SEM "input_image"
 #define IMAGE_MAX_LENGTH (4096 * 2160 * 3 / 2)
 #define INPUT_SHM_SIZE (4)
+#define OUTPUT_SHM_SIZE (8)
 
 namespace hobot_cv {
 
 // input共享内存头部信息
 typedef struct shmhead {
-  uint32_t blksize;       //每一块大小
-  uint32_t blocks;        //共享内存块数
-  uint32_t rd_index;      //读索引
-  uint32_t wr_index;      //写索引
-  bool service_launch;    // hobotcv_service是否已经启动
-  int output_shmKey[20];  //用于获取输出图片共享内存key
+  uint32_t blksize;                      //每一块大小
+  uint32_t input_blocks;                 //共享内存块数
+  uint32_t rd_index;                     //读索引
+  uint32_t wr_index;                     //写索引
+  bool service_launch;                   // hobotcv_service是否已经启动
+  int output_shmIndex[OUTPUT_SHM_SIZE];  //用于获取输出图片共享内存索引
 } shmhead_t;
 
 // input共享内存结构信息
 typedef struct shminfo {
   hobot_cv::shmhead_t *p_shm;  //头部指针信息
-  char *p_payload;             //有效负载起始地址
+  char *p_InputPayload;        // Input有效负载起始地址
+  char *p_OutputPayload;       // Output有效负载起始地址
   int shmid;                   //共享内存id
   sem_t *sem_mutex;  //用来互斥量的信号量,生产者消费者用来占用仓库的信号量
   sem_t *sem_full;   //仓库已满的信号量
   sem_t *sem_empty;  //仓库已空的信号量
-  sem_t *sem_output;  //用于不同调用进程在返回图片时更改output_shmKey
+  sem_t *sem_output;  //用于不同调用进程在返回图片时更改output_shmIndex
 } shmfifo_t;
 
 typedef struct HOBOT_CV_CROP_RECT {
@@ -73,15 +75,14 @@ typedef struct HOBOT_CV_INPUT_IMAGE {
   int output_w;                      //输出图片宽度
   int output_h;                      //输出图片高度
   int rotate;  //输出图片旋转角度，0，90，180，270
-  // CropRect roi;  // crop属性
   // int pymEnable;                 //金字塔处理使能 0/1
   // PyramidAttr pymattr;           //金字塔处理配置参数
 } InputImage_t;
 
 typedef struct HOBOT_CV_INPUT {
   InputImage_t image;
-  char stamp[20];    //用于输出处理后信号量
-  int output_shmid;  // service处理后的图片数据存放的共享内存id
+  char stamp[20];        //用于输出处理后信号量
+  int output_shm_index;  // service处理后的图片数据存放的共享内存索引
 } ShmInput_t;
 
 typedef struct HBOT_CV_OUTPUT_IMAGE {
@@ -114,10 +115,10 @@ class hobotcv_front {
 
   int prepareRotateParam(int rotation);
 
-  int prepareCropRoi(int &src_height,
-                     int &src_width,
-                     int &dst_width,
-                     int &dst_height,
+  int prepareCropRoi(int src_height,
+                     int src_width,
+                     int dst_width,
+                     int dst_height,
                      const cv::Range &rowRange,
                      const cv::Range &colRange);
 
@@ -140,10 +141,10 @@ class hobotcv_front {
 
  private:
   shmfifo_t fifo;
-  OutputImage *output;  //映射到输出图片的共享内存
-  sem_t *sem_output;
-  int output_shmid;
-  int output_shmkeyIndex = -1;
+  OutputImage *hobotcv_output;  //映射到输出图片的共享内存
+  sem_t *hobotcv_sem_output;
+  std::string str_stamp;
+  int output_shm_Index = -1;
 };
 
 }  // namespace hobot_cv

@@ -24,6 +24,7 @@
 
 namespace hobot_cv {
 int hobotcv_service::serviceInit() {
+  RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "Init hobotcv_service");
   memset(&fifo, 0, sizeof(hobot_cv::shmfifo_t));
   // Init sem
   //初始化services时，input共享内存已经由hobotcv创建
@@ -36,8 +37,10 @@ int hobotcv_service::serviceInit() {
                  "shmfifo shmat failed!!");
     return -1;
   }
-  //+1指针偏移,得到有效负载起始地址
-  fifo.p_payload = (char *)(fifo.p_shm + 1);
+  //指针偏移,得到有效负载起始地址
+  fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
+  fifo.p_OutputPayload =
+      fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
   fifo.sem_mutex = sem_open("/sem_input", O_CREAT);
   fifo.sem_full = sem_open("/sem_input_full", O_CREAT);
   fifo.sem_empty = sem_open("/sem_input_empty", O_CREAT);
@@ -58,8 +61,8 @@ int hobotcv_service::serviceInit() {
   group_manager_thread = std::make_shared<std::thread>([this] {
     while (1) {
       sleep(10);  //等待group启动接收图片数据
-      auto now_time = currentMicroseconds();
       std::unique_lock<std::mutex> mtx(group_list_mtx);
+      auto now_time = currentMicroseconds();
       auto it = group_list.begin();
       for (; it != group_list.end();) {
         auto active_time = (*it)->active_time;
@@ -73,6 +76,8 @@ int hobotcv_service::serviceInit() {
                       over_time.str().c_str());
 
           this->groupflag[(*it)->group_id] = 0;
+          HB_SYS_Free((*it)->mmz_paddr[0], (*it)->mmz_vaddr[0]);
+          HB_SYS_Free((*it)->mmz_paddr[1], (*it)->mmz_vaddr[1]);
           HB_VPS_StopGrp((*it)->group_id);
           HB_VPS_DestroyGrp((*it)->group_id);
           it = group_list.erase(it);
@@ -91,9 +96,10 @@ int hobotcv_service::groupScheduler() {
     sem_wait(fifo.sem_empty);
     sem_wait(fifo.sem_mutex);
     ShmInput_t *input =
-        (ShmInput_t *)(fifo.p_payload +
+        (ShmInput_t *)(fifo.p_InputPayload +
                        fifo.p_shm->blksize * fifo.p_shm->rd_index);
-    fifo.p_shm->rd_index = (fifo.p_shm->rd_index + 1) % fifo.p_shm->blocks;
+    fifo.p_shm->rd_index =
+        (fifo.p_shm->rd_index + 1) % fifo.p_shm->input_blocks;
     int src_w = input->image.input_w;
     int src_h = input->image.input_h;
     std::unique_lock<std::mutex> mtx(group_list_mtx);
@@ -102,8 +108,11 @@ int hobotcv_service::groupScheduler() {
       if (group != nullptr) {
         group_list.push_back(group);
       } else {
+        sem_post(fifo.sem_full);
+        sem_post(fifo.sem_mutex);
         sem_t *sem_output = sem_open(input->stamp, O_CREAT);
         sem_post(sem_output);
+        sem_close(sem_output);
       }
     } else {
       bool have_same_group = false;
@@ -126,6 +135,7 @@ int hobotcv_service::groupScheduler() {
                        "hobotcv_service group is full !!");
           sem_t *sem_output = sem_open(input->stamp, O_CREAT);
           sem_post(sem_output);
+          sem_close(sem_output);
           sem_post(fifo.sem_mutex);
           sem_post(fifo.sem_full);
         } else {
@@ -133,8 +143,11 @@ int hobotcv_service::groupScheduler() {
           if (group != nullptr) {
             group_list.push_back(group);
           } else {
+            sem_post(fifo.sem_full);
+            sem_post(fifo.sem_mutex);
             sem_t *sem_output = sem_open(input->stamp, O_CREAT);
             sem_post(sem_output);
+            sem_close(sem_output);
           }
         }
       }
@@ -154,7 +167,7 @@ std::shared_ptr<group_info> hobotcv_service::createGroup(ShmInput_t *input) {
       break;
     }
   }
-  RCLCPP_INFO(rclcpp::get_logger("hobotcv_service"),
+  RCLCPP_WARN(rclcpp::get_logger("hobotcv_service"),
               "create group: %d ",
               group->group_id);
 
@@ -162,11 +175,29 @@ std::shared_ptr<group_info> hobotcv_service::createGroup(ShmInput_t *input) {
   group->max_w = input->image.input_w;
   group->active_time = currentMicroseconds();
 
+  //申请系统内存
+  int alloclen = group->max_h * group->max_w;
+  int ret = HB_SYS_Alloc(
+      &(group->mmz_paddr[0]), (void **)&(group->mmz_vaddr[0]), alloclen);
+  if (ret != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
+                 "HB_SYS_Alloc failed!!");
+    return nullptr;
+  }
+  alloclen = group->max_h * group->max_w / 2;
+  ret = HB_SYS_Alloc(
+      &(group->mmz_paddr[1]), (void **)&(group->mmz_vaddr[1]), alloclen);
+  if (ret != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
+                 "HB_SYS_Alloc failed!!");
+    return nullptr;
+  }
+
   VPS_GRP_ATTR_S grp_attr;
   grp_attr.maxW = group->max_w;
   grp_attr.maxH = group->max_h;
   grp_attr.frameDepth = 8;
-  int ret = HB_VPS_CreateGrp(group->group_id, &grp_attr);
+  ret = HB_VPS_CreateGrp(group->group_id, &grp_attr);
   if (0 != ret) {
     RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
                  "create group: %d failed!!",
@@ -196,40 +227,49 @@ std::shared_ptr<group_info> hobotcv_service::createGroup(ShmInput_t *input) {
       ShmInput_t *input = group->input_list.front();
       group->input_list.pop_front();
       lock.unlock();
-      int src_w = input->image.input_w;
-      int src_h = input->image.input_h;
-      int dst_w = input->image.output_w;
-      int dst_h = input->image.output_h;
       int channel_id = -1;
       int enScale = 1;
-      if (dst_w > src_w || dst_h > src_h) {  // up scale
+      if (input->image.output_w > input->image.input_w ||
+          input->image.output_h > input->image.input_h) {  // up scale
         channel_id = 5;
       } else {  // down scale
-        if (dst_w > 2048 || dst_h > 1080) {
+        if (input->image.output_w > 2048 || input->image.output_h > 1080) {
           channel_id = 2;
-        } else if ((dst_w <= 2048 && dst_w > 1280) || dst_h > 720) {
+        } else if ((input->image.output_w <= 2048 &&
+                    input->image.output_w > 1280) ||
+                   input->image.output_h > 720) {
           channel_id = 1;
-        } else if (dst_w <= 1280 && dst_h <= 720) {
+        } else if (input->image.output_w <= 1280 &&
+                   input->image.output_h <= 720) {
           channel_id = 0;
         }
       }
-      if (dst_w == src_w || dst_h == src_h) {
+      if (input->image.output_w == input->image.input_w ||
+          input->image.output_h == input->image.input_h) {
         enScale = 0;
       }
 
       auto channel = group->channel_map.find(channel_id);
       if (channel == group->channel_map.end()) {
-        setChannelAttr(group->group_id, channel_id, dst_w, dst_h, enScale);
+        setChannelAttr(group->group_id,
+                       channel_id,
+                       input->image.output_w,
+                       input->image.output_h,
+                       enScale);
         auto chn = std::make_shared<channel_info>();
         chn->channel_id = channel_id;
-        chn->output_w = dst_w;
-        chn->output_h = dst_h;
+        chn->output_w = input->image.output_w;
+        chn->output_h = input->image.output_h;
         group->channel_map[channel_id] = chn;
-      } else if (channel->second->output_w != dst_w ||
-                 channel->second->output_h != dst_h) {
-        setChannelAttr(group->group_id, channel_id, dst_w, dst_h, enScale);
-        group->channel_map[channel_id]->output_w = dst_w;
-        group->channel_map[channel_id]->output_h = dst_h;
+      } else if (channel->second->output_w != input->image.output_w ||
+                 channel->second->output_h != input->image.output_h) {
+        setChannelAttr(group->group_id,
+                       channel_id,
+                       input->image.output_w,
+                       input->image.output_h,
+                       enScale);
+        group->channel_map[channel_id]->output_w = input->image.output_w;
+        group->channel_map[channel_id]->output_h = input->image.output_h;
       }
 
       auto it_channel = group->channel_map.find(channel_id);
@@ -237,34 +277,28 @@ std::shared_ptr<group_info> hobotcv_service::createGroup(ShmInput_t *input) {
         it_channel->second->rotation = input->image.rotate;
         setChannelRotate(group->group_id, channel_id, input->image.rotate);
       }
-
       int ret = HB_VPS_EnableChn(group->group_id, channel_id);
       if (0 != ret) {
         RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
                      "EnableChn failed!!");
         sem_t *sem_output = sem_open(input->stamp, O_CREAT);
         sem_post(sem_output);
+        sem_close(sem_output);
         continue;
       }
-      ret = sendVpsFrame(input, group->group_id);
+      ret = sendVpsFrame(input, group);
       if (ret != 0) {
         RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
                      "sendVpsFrame to group: %d failed!!",
                      group->group_id);
         sem_t *sem_output = sem_open(input->stamp, O_CREAT);
         sem_post(sem_output);
+        sem_close(sem_output);
         continue;
       }
-
-      OutputImage *output = (OutputImage *)shmat(input->output_shmid, NULL, 0);
-      if (output == (OutputImage *)-1) {
-        RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
-                     "shmat output failed shmid: %d!!",
-                     input->output_shmid);
-        sem_t *sem_output = sem_open(input->stamp, O_CREAT);
-        sem_post(sem_output);
-        continue;
-      }
+      OutputImage *output =
+          (OutputImage *)(this->fifo.p_OutputPayload +
+                          sizeof(OutputImage) * input->output_shm_index);
       hb_vio_buffer_t out_buf;
       ret = getChnFrame(group->group_id, channel_id, out_buf, output);
       if (ret != 0) {
@@ -272,13 +306,12 @@ std::shared_ptr<group_info> hobotcv_service::createGroup(ShmInput_t *input) {
       } else {
         output->isSuccess = true;
       }
-      shmdt(output);
       sem_t *sem_output = sem_open(input->stamp, O_CREAT);
       sem_post(sem_output);
+      sem_close(sem_output);
       HB_VPS_ReleaseChnFrame(group->group_id, channel_id, &out_buf);
     }
   });
-
   return group;
 }
 
@@ -327,34 +360,16 @@ int hobotcv_service::setChannelRotate(int group_id, int chn_id, int rotation) {
   return 0;
 }
 
-int hobotcv_service::sendVpsFrame(ShmInput_t *input, int group_id) {
-  uint64_t mmz_paddr[2];
-  char *mmz_vaddr[2];
-  int alloclen = input->image.input_h * input->image.input_w;
-  int ret = HB_SYS_Alloc(&mmz_paddr[0], (void **)&mmz_vaddr[0], alloclen);
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
-                 "HB_SYS_Alloc failed!!");
-    sem_post(fifo.sem_full);
-    sem_post(fifo.sem_mutex);
-    return -1;
-  }
-  alloclen = input->image.input_h * input->image.input_w / 2;
-  ret = HB_SYS_Alloc(&mmz_paddr[1], (void **)&mmz_vaddr[1], alloclen);
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
-                 "HB_SYS_Alloc failed!!");
-    sem_post(fifo.sem_full);
-    sem_post(fifo.sem_mutex);
-    return -1;
-  }
-
+int hobotcv_service::sendVpsFrame(ShmInput_t *input,
+                                  std::shared_ptr<group_info> group) {
   char *ydata = &(input->image.inputData[0]);
   char *uvdata = &(input->image.inputData[0]) +
                  input->image.input_w * input->image.input_h;
-
-  memcpy(mmz_vaddr[0], ydata, input->image.input_h * input->image.input_w);
-  memcpy(mmz_vaddr[1], uvdata, input->image.input_h * input->image.input_w / 2);
+  memcpy(
+      group->mmz_vaddr[0], ydata, input->image.input_h * input->image.input_w);
+  memcpy(group->mmz_vaddr[1],
+         uvdata,
+         input->image.input_h * input->image.input_w / 2);
   sem_post(fifo.sem_full);
   sem_post(fifo.sem_mutex);
 
@@ -363,18 +378,16 @@ int hobotcv_service::sendVpsFrame(ShmInput_t *input, int group_id) {
   feedback_buf.img_addr.height = input->image.input_h;
   feedback_buf.img_addr.stride_size = input->image.input_w;
 
-  feedback_buf.img_addr.addr[0] = mmz_vaddr[0];
-  feedback_buf.img_addr.addr[1] = mmz_vaddr[1];
-  feedback_buf.img_addr.paddr[0] = mmz_paddr[0];
-  feedback_buf.img_addr.paddr[1] = mmz_paddr[1];
+  feedback_buf.img_addr.addr[0] = group->mmz_vaddr[0];
+  feedback_buf.img_addr.addr[1] = group->mmz_vaddr[1];
+  feedback_buf.img_addr.paddr[0] = group->mmz_paddr[0];
+  feedback_buf.img_addr.paddr[1] = group->mmz_paddr[1];
 
-  ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
+  int ret = HB_VPS_SendFrame(group->group_id, &feedback_buf, 1000);
   if (0 != ret) {
     RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"), "SendFrame failed!!");
     return ret;
   }
-  HB_SYS_Free(mmz_paddr[0], mmz_vaddr[0]);
-  HB_SYS_Free(mmz_paddr[1], mmz_vaddr[1]);
   return 0;
 }
 
@@ -494,7 +507,6 @@ int hobotcv_service::groupChn5Init(int group_id, int max_w, int max_h) {
                  chn_attr_max.width,
                  chn_attr_max.height);
   }
-
   return 0;
 }
 

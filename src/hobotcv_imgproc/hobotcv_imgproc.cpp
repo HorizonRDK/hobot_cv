@@ -84,7 +84,7 @@ int hobotcv_resize(HOBOT_CV_TYPE type,
       return -1;
     }
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("hobot_cv"), "launch hobot_cv service!");
+    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "launch hobot_cv service!");
     pid = fork();
     if (pid < 0) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
@@ -133,7 +133,7 @@ int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotation) {
       return -1;
     }
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("hobot_cv"), "launch hobot_cv service!");
+    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "launch hobot_cv service!");
     pid = fork();
     if (pid < 0) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
@@ -221,7 +221,7 @@ int hobotcv_imgproc(const cv::Mat &src,
       return -1;
     }
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("hobot_cv"), "launch hobot_cv service!");
+    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "launch hobot_cv service!");
     pid = fork();
     if (pid < 0) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),

@@ -40,28 +40,36 @@ hobotcv_front::~hobotcv_front() {}
 int hobotcv_front::shmfifoInit() {
   memset(&fifo, 0, sizeof(hobot_cv::shmfifo_t));
   // Init sem
-  int size = sizeof(hobot_cv::shmhead_t) + INPUT_SHM_SIZE * sizeof(ShmInput_t);
+  int size = sizeof(hobot_cv::shmhead_t) + INPUT_SHM_SIZE * sizeof(ShmInput_t) +
+             OUTPUT_SHM_SIZE * sizeof(OutputImage);
   int shmid = shmget((key_t)1234, 0, 0);
   if (shmid < 0) {
-    RCLCPP_INFO(rclcpp::get_logger("hobot_cv"), "create input shared memory!!");
+    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
+                "create input shared memory size: %d!!",
+                size);
     //创建新的共享内存区,返回共享内存标识符
     fifo.shmid = shmget((key_t)1234, size, IPC_CREAT | 0666);
+
     if (fifo.shmid == -1) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmget failed!!");
       return -1;
     }
     // fino->p_shm 指向共享内存头部指针
     fifo.p_shm = (hobot_cv::shmhead_t *)shmat(fifo.shmid, NULL, 0);
-    //文档中有说明 "error (void *) -1 is returned"
     if (fifo.p_shm == (hobot_cv::shmhead_t *)-1) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
       return -1;
     }
-    //+1指针偏移,得到有效负载起始地址
-    fifo.p_payload = (char *)(fifo.p_shm + 1);
+    memset(fifo.p_shm, 0, sizeof(shmhead_t));
+    //指针偏移,得到有效负载起始地址
+    fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
+    memset(fifo.p_InputPayload, 0, INPUT_SHM_SIZE * sizeof(ShmInput_t));
+    fifo.p_OutputPayload =
+        fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
+    memset(fifo.p_OutputPayload, 0, OUTPUT_SHM_SIZE * sizeof(OutputImage));
 
     fifo.p_shm->blksize = sizeof(ShmInput_t);
-    fifo.p_shm->blocks = INPUT_SHM_SIZE;
+    fifo.p_shm->input_blocks = INPUT_SHM_SIZE;
     fifo.p_shm->rd_index = 0;
     fifo.p_shm->wr_index = 0;
     fifo.p_shm->service_launch = false;
@@ -82,8 +90,10 @@ int hobotcv_front::shmfifoInit() {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
       return -1;
     }
-    //+1指针偏移,得到有效负载起始地址
-    fifo.p_payload = (char *)(fifo.p_shm + 1);
+    //指针偏移,得到有效负载起始地址
+    fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
+    fifo.p_OutputPayload =
+        fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
     fifo.sem_mutex = sem_open("/sem_input", O_CREAT);
     fifo.sem_full = sem_open("/sem_input_full", O_CREAT);
     fifo.sem_empty = sem_open("/sem_input_empty", O_CREAT);
@@ -153,10 +163,10 @@ int hobotcv_front::prepareRotateParam(int rotation) {
   return 0;
 }
 
-int hobotcv_front::prepareCropRoi(int &src_height,
-                                  int &src_width,
-                                  int &dst_width,
-                                  int &dst_height,
+int hobotcv_front::prepareCropRoi(int src_height,
+                                  int src_width,
+                                  int dst_width,
+                                  int dst_height,
                                   const cv::Range &rowRange,
                                   const cv::Range &colRange) {
   if (colRange.end - colRange.start <= 0 ||
@@ -201,58 +211,51 @@ int hobotcv_front::prepareCropRoi(int &src_height,
 int hobotcv_front::createInputImage(const cv::Mat &src) {
   sem_wait(fifo.sem_full);
   sem_wait(fifo.sem_mutex);
-  ShmInput_t *input = (ShmInput_t *)(fifo.p_payload + fifo.p_shm->wr_index *
-                                                          fifo.p_shm->blksize);
+  ShmInput_t *input =
+      (ShmInput_t *)(fifo.p_InputPayload +
+                     fifo.p_shm->wr_index * fifo.p_shm->blksize);
   memset(input, 0, sizeof(ShmInput_t));
   input->image.input_h = roi.cropEnable == 1 ? roi.height : src_h;
   input->image.input_w = roi.cropEnable == 1 ? roi.width : src_w;
   input->image.output_h = dst_h;
   input->image.output_w = dst_w;
   input->image.rotate = rotate;
-  std::string str_stamp;
+  // std::string str_stamp;
   auto stamp = currentMicroseconds();
   std::stringstream ss;
-  ss << "/iutput_" << stamp;
+  ss << "/output_" << stamp;
   ss >> str_stamp;
   strcpy(input->stamp, str_stamp.c_str());
 
   sem_wait(fifo.sem_output);
-  for (size_t i = 0; i < 20; i++) {
-    if (fifo.p_shm->output_shmKey[i] == 0) {
-      output_shmkeyIndex = i;
-      int key = 1235 + i;
-      //创建输出图片共享内存,返回共享内存标识符
-      input->output_shmid =
-          shmget((key_t)key, sizeof(OutputImage), IPC_CREAT | 0666);
-      if (input->output_shmid == -1) {
-        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "output shmget failed!!");
-        sem_post(fifo.sem_output);
-        sem_post(fifo.sem_mutex);
-        return -1;
-      }
-      output_shmid = input->output_shmid;
-      fifo.p_shm->output_shmKey[i] = 1;
+  for (size_t i = 0; i < OUTPUT_SHM_SIZE; i++) {
+    if (fifo.p_shm->output_shmIndex[i] == 0) {
+      output_shm_Index = i;
+      input->output_shm_index = i;
+      fifo.p_shm->output_shmIndex[i] = 1;
       break;
     }
   }
   sem_post(fifo.sem_output);
-  if (output_shmkeyIndex == -1) {
+  if (output_shm_Index == -1) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "get output shmkey failed!!");
     sem_post(fifo.sem_mutex);
+    shmdt(fifo.p_shm);
+    sem_close(fifo.sem_empty);
+    sem_close(fifo.sem_full);
+    sem_close(fifo.sem_mutex);
+    sem_close(fifo.sem_output);
     return -1;
   }
 
   // 映射到输出图片的共享内存
-  output = (OutputImage *)shmat(input->output_shmid, NULL, 0);
-  if (output == (OutputImage *)-1) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "output shmat failed!!");
-    sem_post(fifo.sem_mutex);
-    return -1;
-  }
-  memset(output, 0, sizeof(OutputImage));
-  output->isSuccess = false;
+  hobotcv_output = (OutputImage *)(fifo.p_OutputPayload +
+                                   sizeof(OutputImage) * output_shm_Index);
+  memset(hobotcv_output, 0, sizeof(OutputImage));
+  hobotcv_output->isSuccess = false;
 
-  sem_output = sem_open(str_stamp.c_str(), O_CREAT, 0666, 0);  // 输出图片信号量
+  hobotcv_sem_output =
+      sem_open(str_stamp.c_str(), O_CREAT, 0666, 0);  // 输出图片信号量
 
   if (roi.cropEnable == 1) {
     auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
@@ -276,7 +279,7 @@ int hobotcv_front::createInputImage(const cv::Mat &src) {
     size_t size = input->image.input_h * input->image.input_w * 3 / 2;
     memcpy(&(input->image.inputData[0]), src.data, size);
   }
-  fifo.p_shm->wr_index = (fifo.p_shm->wr_index + 1) % fifo.p_shm->blocks;
+  fifo.p_shm->wr_index = (fifo.p_shm->wr_index + 1) % fifo.p_shm->input_blocks;
 
   sem_post(fifo.sem_empty);
   sem_post(fifo.sem_mutex);
@@ -284,31 +287,39 @@ int hobotcv_front::createInputImage(const cv::Mat &src) {
 }
 
 int hobotcv_front::getOutputImage(cv::Mat &dst) {
-  sem_wait(sem_output);
-  if (output->isSuccess == false) {
+  sem_wait(hobotcv_sem_output);
+
+  if (hobotcv_output->isSuccess == false) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
                  "hobotcv_service get frame failed!");
     shmdt(fifo.p_shm);
-    shmdt(output);
-    shmctl(output_shmid, IPC_RMID, NULL);
-    sem_destroy(sem_output);
+    sem_close(fifo.sem_empty);
+    sem_close(fifo.sem_full);
+    sem_close(fifo.sem_mutex);
+    sem_close(hobotcv_sem_output);
+    sem_unlink(str_stamp.c_str());
     sem_wait(fifo.sem_output);
-    fifo.p_shm->output_shmKey[output_shmkeyIndex] = 0;
+    fifo.p_shm->output_shmIndex[output_shm_Index] = 0;
     sem_post(fifo.sem_output);
+    sem_close(fifo.sem_output);
     return -1;
   }
 
-  dst = cv::Mat(output->output_h * 3 / 2, output->output_w, CV_8UC1);
+  dst = cv::Mat(
+      hobotcv_output->output_h * 3 / 2, hobotcv_output->output_w, CV_8UC1);
   memcpy(dst.data,
-         output->outputData,
-         output->output_h * output->output_w * 3 / 2);
+         hobotcv_output->outputData,
+         hobotcv_output->output_h * hobotcv_output->output_w * 3 / 2);
 
-  shmdt(output);
-  shmctl(output_shmid, IPC_RMID, NULL);
-  sem_destroy(sem_output);
+  sem_close(fifo.sem_empty);
+  sem_close(fifo.sem_full);
+  sem_close(fifo.sem_mutex);
+  sem_close(hobotcv_sem_output);
+  sem_unlink(str_stamp.c_str());
   sem_wait(fifo.sem_output);
-  fifo.p_shm->output_shmKey[output_shmkeyIndex] = 0;
+  fifo.p_shm->output_shmIndex[output_shm_Index] = 0;
   sem_post(fifo.sem_output);
+  sem_close(fifo.sem_output);
   shmdt(fifo.p_shm);
   return 0;
 }
@@ -371,7 +382,8 @@ int hobotcv_front::hobotcv_bpu_resize(const cv::Mat &src,
   hbDNNTensor output_tensor;
   prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
   // resize
-  hbDNNResizeCtrlParam ctrl = {HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR};
+  hbDNNResizeCtrlParam ctrl = {
+      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
   hbDNNTaskHandle_t task_handle = nullptr;
 
   int ret = 0;

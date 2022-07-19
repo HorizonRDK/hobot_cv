@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HOBOTCV_IMGPROC_H
-#define HOBOTCV_IMGPROC_H
+#ifndef HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
+#define HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
@@ -50,4 +50,4 @@ int hobotcv_imgproc(const cv::Mat &src,
 
 }  // namespace hobot_cv
 
-#endif  // HOBOTCV_IMGPROC_H
+#endif  // HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_

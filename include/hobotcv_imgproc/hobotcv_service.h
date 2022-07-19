@@ -35,7 +35,6 @@ typedef struct HOBOT_CV_CHANNEL_INFO {
   int output_w;
   int output_h;
   int rotation;
-  // VPS_CROP_INFO_S roi;
 } channel_info;
 
 typedef struct HOBOT_CV_GROUP_INFO {
@@ -43,6 +42,9 @@ typedef struct HOBOT_CV_GROUP_INFO {
   uint64_t active_time;
   int max_w;
   int max_h;
+
+  uint64_t mmz_paddr[2];
+  char *mmz_vaddr[2];
 
   std::mutex input_list_mtx;                  //线程互斥锁
   std::condition_variable cv_list_not_empty;  //不为空唤醒work线程
@@ -65,8 +67,11 @@ class hobotcv_service {
 
   //初始化channel后才支持channel的动态设置
   int groupChn0Init(int group_id, int max_w, int max_h);
+
   int groupChn1Init(int group_id, int max_w, int max_h);
+
   int groupChn2Init(int group_id, int max_w, int max_h);
+
   int groupChn5Init(int group_id, int max_w, int max_h);
 
   int setChannelAttr(
@@ -76,7 +81,7 @@ class hobotcv_service {
 
   int setChannelRotate(int group_id, int chn_id, int rotation);
 
-  int sendVpsFrame(ShmInput_t *input, int group_id);
+  int sendVpsFrame(ShmInput_t *input, std::shared_ptr<group_info> group);
 
   int getChnFrame(int group_id,
                   int chn_id,
