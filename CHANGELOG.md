@@ -1,6 +1,6 @@
 # Changelog for package hobot_cv
 
-v1.0.3 (2022-07-20)
+hhp_1.0.3 (2022-07-20)
 ------------------
 1. 支持vps图片处理加速。
 2. 添加图片rotate，crop&resize&rotate接口。
