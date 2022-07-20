@@ -71,6 +71,9 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 
 ## package说明
   源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，rotate, 高斯滤波。
+  hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或则vps加速，rotate只能使用vps。
+  如果用户需要低频处理图片则可以选择使用bpu加速，bpu加速不需要对硬件进行单独的属性配置，vps对硬件属性进行配置耗时较长。
+  如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发hobotcv_service的超时判断。
 
 ## 接口说明
 ### crop&resize&rotate
