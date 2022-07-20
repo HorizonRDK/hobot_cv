@@ -28,15 +28,24 @@ typedef enum HOBOT_CV_ROTATION_E {
   ROTATION_MAX
 } ROTATION_E;
 
-enum HOBOT_CV_TYPE { HOBOTCV_BPU = 0, HOBOTCV_VPS };
+enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
 
-int hobotcv_resize(HOBOT_CV_TYPE type,
-                   const cv::Mat &src,
+int hobotcv_resize(const cv::Mat &src,
+                   int src_h,
+                   int src_w,
                    cv::Mat &dst,
                    int dst_h,
                    int dst_w,
-                   const cv::Range &rowRange,
-                   const cv::Range &colRange);
+                   HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
+cv::Mat hobotcv_crop(const cv::Mat &src,
+                     int src_h,
+                     int src_w,
+                     int dst_h,
+                     int dst_w,
+                     const cv::Range &rowRange,
+                     const cv::Range &colRange,
+                     HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
 int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
 

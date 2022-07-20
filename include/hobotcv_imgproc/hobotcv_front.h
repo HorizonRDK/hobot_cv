@@ -31,7 +31,6 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
 
-#define INPUT_SEM "input_image"
 #define IMAGE_MAX_LENGTH (4096 * 2160 * 3 / 2)
 #define INPUT_SHM_SIZE (4)
 #define OUTPUT_SHM_SIZE (8)
@@ -99,19 +98,11 @@ class hobotcv_front {
 
   int shmfifoInit();
 
-  int hobotcv_bpu_resize(const cv::Mat &src,
-                         int src_h,
-                         int src_w,
-                         cv::Mat &dst,
-                         int dst_h,
-                         int dst_w,
-                         const cv::Range &rowRange,
-                         const cv::Range &colRange);
-
   int prepareResizeParam(int src_width,
                          int src_height,
                          int dst_width,
-                         int dst_height);
+                         int dst_height,
+                         bool printLog = true);
 
   int prepareRotateParam(int rotation);
 
@@ -120,16 +111,11 @@ class hobotcv_front {
                      int dst_width,
                      int dst_height,
                      const cv::Range &rowRange,
-                     const cv::Range &colRange);
+                     const cv::Range &colRange,
+                     bool printLog = true);
 
   int createInputImage(const cv::Mat &src);
   int getOutputImage(cv::Mat &dst);
-
-  bool getServiceLaunched() { return fifo.p_shm->service_launch; }
-
-  void setServiceLaunched(bool launched) {
-    fifo.p_shm->service_launch = launched;
-  }
 
  public:
   int src_w;
@@ -141,7 +127,7 @@ class hobotcv_front {
 
  private:
   shmfifo_t fifo;
-  OutputImage *hobotcv_output;  //映射到输出图片的共享内存
+  OutputImage *hobotcv_output;  //映射到输出图片共享内存
   sem_t *hobotcv_sem_output;
   std::string str_stamp;
   int output_shm_Index = -1;

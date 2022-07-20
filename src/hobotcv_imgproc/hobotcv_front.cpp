@@ -40,48 +40,10 @@ hobotcv_front::~hobotcv_front() {}
 int hobotcv_front::shmfifoInit() {
   memset(&fifo, 0, sizeof(hobot_cv::shmfifo_t));
   // Init sem
-  int size = sizeof(hobot_cv::shmhead_t) + INPUT_SHM_SIZE * sizeof(ShmInput_t) +
-             OUTPUT_SHM_SIZE * sizeof(OutputImage);
   int shmid = shmget((key_t)1234, 0, 0);
   if (shmid < 0) {
-    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
-                "create input shared memory size: %d!!",
-                size);
-    //创建新的共享内存区,返回共享内存标识符
-    fifo.shmid = shmget((key_t)1234, size, IPC_CREAT | 0666);
-
-    if (fifo.shmid == -1) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmget failed!!");
-      return -1;
-    }
-    // fino->p_shm 指向共享内存头部指针
-    fifo.p_shm = (hobot_cv::shmhead_t *)shmat(fifo.shmid, NULL, 0);
-    if (fifo.p_shm == (hobot_cv::shmhead_t *)-1) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
-      return -1;
-    }
-    memset(fifo.p_shm, 0, sizeof(shmhead_t));
-    //指针偏移,得到有效负载起始地址
-    fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
-    memset(fifo.p_InputPayload, 0, INPUT_SHM_SIZE * sizeof(ShmInput_t));
-    fifo.p_OutputPayload =
-        fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
-    memset(fifo.p_OutputPayload, 0, OUTPUT_SHM_SIZE * sizeof(OutputImage));
-
-    fifo.p_shm->blksize = sizeof(ShmInput_t);
-    fifo.p_shm->input_blocks = INPUT_SHM_SIZE;
-    fifo.p_shm->rd_index = 0;
-    fifo.p_shm->wr_index = 0;
-    fifo.p_shm->service_launch = false;
-
-    //创建4个信号量
-    fifo.sem_mutex = sem_open("/sem_input", O_CREAT, 0666, 1);  // 互斥信号量
-    fifo.sem_full =
-        sem_open("/sem_input_full", O_CREAT, 0666, INPUT_SHM_SIZE);  //满信号量
-    fifo.sem_empty =
-        sem_open("/sem_input_empty", O_CREAT, 0666, 0);  // 空信号量
-    fifo.sem_output =
-        sem_open("/sem_output_key", O_CREAT, 0666, 1);  // output互斥
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "launch hobot_service first!");
+    return -1;
   } else {
     fifo.shmid = shmid;
     //连接 shm
@@ -105,31 +67,43 @@ int hobotcv_front::shmfifoInit() {
 int hobotcv_front::prepareResizeParam(int src_width,
                                       int src_height,
                                       int dst_width,
-                                      int dst_height) {
+                                      int dst_height,
+                                      bool printLog) {
   int resize_src_width = roi.cropEnable ? roi.width : src_width;
   int resize_src_height = roi.cropEnable ? roi.height : src_height;
-  if (dst_width % 4 != 0 || dst_height % 2 != 0 || dst_height > 2160 ||
+  if (dst_width % 16 != 0 || dst_height % 2 != 0 || dst_height > 2160 ||
       dst_width > 4096 || dst_height < 32 || dst_width < 32) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "The dst width should be a multiple of 4 and the "
-                 "height should be even! The output resolution ranges from 32 "
-                 "x 32 to 4096 x 2160 !");
+    if (printLog) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv"),
+          "The dst width should be a multiple of 16 and the "
+          "height should be even! The output resolution ranges from 32 "
+          "x 32 to 4096 x 2160 !");
+    }
     return -1;
   }
-  if (resize_src_height < 32 || resize_src_width < 32 ||
+  if (resize_src_width % 16 != 0 || resize_src_height % 2 != 0 ||
+      resize_src_height < 32 || resize_src_width < 32 ||
       resize_src_height > 2160 || resize_src_width > 4096) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "The input resolution ranges from 32 x 32 to 4096 x 4096");
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                   "The input resolution ranges from 32 x 32 to 4096 x 4096");
+    }
+    return -1;
   }
   if (dst_height > resize_src_height * 1.5 ||
       dst_width > resize_src_width * 1.5) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "Max 1.5x upscale is supported");
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                   "Max 1.5x upscale is supported");
+    }
     return -1;
   }
   if (dst_width < resize_src_width / 8 || dst_height < resize_src_width / 8) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "Max 1/8 upscale is supported");
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                   "Max 1/8 upscale is supported");
+    }
     return -1;
   }
   this->src_h = src_height;
@@ -168,35 +142,44 @@ int hobotcv_front::prepareCropRoi(int src_height,
                                   int dst_width,
                                   int dst_height,
                                   const cv::Range &rowRange,
-                                  const cv::Range &colRange) {
+                                  const cv::Range &colRange,
+                                  bool printLog) {
   if (colRange.end - colRange.start <= 0 ||
       rowRange.end - rowRange.start <= 0) {
     roi.cropEnable = 0;
   } else {
     if (rowRange.end <= rowRange.start || colRange.end <= colRange.start ||
         rowRange.start < 0 || colRange.start < 0) {
-      RCLCPP_ERROR(
-          rclcpp::get_logger("hobot_cv"),
-          "Invalid Range data! The end data must be greater than the "
-          "start data and the starting value cannot be less than zero!");
+      if (printLog) {
+        RCLCPP_ERROR(
+            rclcpp::get_logger("hobot_cv"),
+            "Invalid Range data! The end data must be bigger than the "
+            "start data and the starting value cannot be less than zero!");
+      }
       return -1;
     }
     if (rowRange.end > src_height || colRange.end > src_width) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                   "Invalid Range data! rowRange should in [0, %d) and "
-                   "colRange should in [0, %d)",
-                   src_height,
-                   src_width);
+      if (printLog) {
+        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                     "Invalid Range data! rowRange should in [0, %d) and "
+                     "colRange should in [0, %d)",
+                     src_height,
+                     src_width);
+      }
       return -1;
     }
     if (dst_height > (rowRange.end - rowRange.start) * 1.5 ||
         dst_width > (colRange.end - colRange.start) * 1.5) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "dst > cropArea * 1.5");
+      if (printLog) {
+        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "dst > cropArea * 1.5");
+      }
       return -1;
     }
     if (dst_width < (colRange.end - colRange.start) / 8 ||
         dst_height < (rowRange.end - rowRange.start) / 8) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "dst < cropArea / 8");
+      if (printLog) {
+        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "dst < cropArea / 8");
+      }
       return -1;
     }
     roi.cropEnable = 1;
@@ -220,7 +203,6 @@ int hobotcv_front::createInputImage(const cv::Mat &src) {
   input->image.output_h = dst_h;
   input->image.output_w = dst_w;
   input->image.rotate = rotate;
-  // std::string str_stamp;
   auto stamp = currentMicroseconds();
   std::stringstream ss;
   ss << "/output_" << stamp;
@@ -321,104 +303,6 @@ int hobotcv_front::getOutputImage(cv::Mat &dst) {
   sem_post(fifo.sem_output);
   sem_close(fifo.sem_output);
   shmdt(fifo.p_shm);
-  return 0;
-}
-
-int hobotcv_front::hobotcv_bpu_resize(const cv::Mat &src,
-                                      int src_h,
-                                      int src_w,
-                                      cv::Mat &dst,
-                                      int dst_h,
-                                      int dst_w,
-                                      const cv::Range &rowRange,
-                                      const cv::Range &colRange) {
-  auto range_h = rowRange.end - rowRange.start;
-  auto range_w = colRange.end - colRange.start;
-  if (colRange.start < 0 || rowRange.start < 0 ||
-      colRange.start + range_w > src_w || rowRange.start + range_h > src_h) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "Invalid Range data! RowRnage should be [0, %d) and "
-                 "colRange should be [0, %d)",
-                 src_h,
-                 src_w);
-    return -1;
-  }
-  dst = cv::Mat(dst_h * 3 / 2, dst_w, CV_8UC1);
-  hbDNNRoi roi;
-  roi.left = colRange.start;
-  roi.top = rowRange.start;
-  if (rowRange.end <= rowRange.start || colRange.end <= colRange.start) {
-    roi.right = 0;
-    roi.bottom = 0;
-  } else {
-    roi.right = colRange.end - 1;
-    roi.bottom = rowRange.end - 1;
-  }
-  if (range_h == dst_h && range_w == dst_w) {  // crop only
-    dst = cv::Mat(dst_h * 3 / 2, dst_w, CV_8UC1);
-    auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
-    auto dstdata = dst.data;
-    // copy y
-    for (int h = 0; h < dst_h; ++h) {
-      auto *raw = dstdata + h * dst_w;
-      auto *src = srcdata + (h + roi.top) * src_w + roi.left;
-      memcpy(raw, src, dst_w);
-    }
-
-    // copy uv
-    auto uv_data = srcdata + src_h * src_w;
-    auto dstuvdata = dstdata + dst_h * dst_w;
-    for (int32_t h = 0; h < dst_h / 2; ++h) {
-      auto *raw = dstuvdata + h * dst_w;
-      auto *src = uv_data + (h + (roi.top / 2)) * src_w + roi.left;
-      memcpy(raw, src, dst_w);
-    }
-    return 0;
-  }
-
-  hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src.data, src_h, src_w, &input_tensor);
-  // Prepare output tensor
-  hbDNNTensor output_tensor;
-  prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
-  // resize
-  hbDNNResizeCtrlParam ctrl = {
-      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
-  hbDNNTaskHandle_t task_handle = nullptr;
-
-  int ret = 0;
-  if (roi.right == 0 && roi.bottom == 0) {
-    ret = hbDNNResize(
-        &task_handle, &output_tensor, &input_tensor, nullptr, &ctrl);
-  } else {
-    ret = hbDNNResize(&task_handle, &output_tensor, &input_tensor, &roi, &ctrl);
-  }
-
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNResize failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return -1;
-  }
-  ret = hbDNNWaitTaskDone(task_handle, 0);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNWaitTaskDone failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return -1;
-  }
-  hbDNNReleaseTask(task_handle);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "release task failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return -1;
-  }
-
-  size_t size = dst_h * dst_w * 3 / 2;
-  memcpy(dst.data, output_tensor.sysMem[0].virAddr, size);
-  hbSysFreeMem(&(input_tensor.sysMem[0]));
-  hbSysFreeMem(&(output_tensor.sysMem[0]));
   return 0;
 }
 

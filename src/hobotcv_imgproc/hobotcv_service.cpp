@@ -24,27 +24,64 @@
 
 namespace hobot_cv {
 int hobotcv_service::serviceInit() {
-  RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "Init hobotcv_service");
   memset(&fifo, 0, sizeof(hobot_cv::shmfifo_t));
   // Init sem
-  //初始化services时，input共享内存已经由hobotcv创建
+  int size = sizeof(hobot_cv::shmhead_t) + INPUT_SHM_SIZE * sizeof(ShmInput_t) +
+             OUTPUT_SHM_SIZE * sizeof(OutputImage);
+  //创建共享内存互斥信号，hobotcv_service只允许启动一次
+  sem_t *shm_sem = sem_open("/sem_shm", O_CREAT, 0666, 1);
+  sem_wait(shm_sem);
   int shmid = shmget((key_t)1234, 0, 0);
-  fifo.shmid = shmid;
-  //连接 shared memory operations
-  fifo.p_shm = (hobot_cv::shmhead_t *)shmat(fifo.shmid, NULL, 0);
-  if (fifo.p_shm == (hobot_cv::shmhead_t *)-1) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
-                 "shmfifo shmat failed!!");
+  if (shmid < 0) {
+    RCLCPP_WARN(rclcpp::get_logger("hobotcv_service"),
+                "create input shared memory size: %d!!",
+                size);
+    //创建新的共享内存区,返回共享内存标识符
+    fifo.shmid = shmget((key_t)1234, size, IPC_CREAT | 0666);
+
+    if (fifo.shmid == -1) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
+                   "shmfifo shmget failed!!");
+      return -1;
+    }
+    // fino->p_shm 指向共享内存头部指针
+    fifo.p_shm = (hobot_cv::shmhead_t *)shmat(fifo.shmid, NULL, 0);
+    if (fifo.p_shm == (hobot_cv::shmhead_t *)-1) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobotcv_service"),
+                   "shmfifo shmat failed!!");
+      return -1;
+    }
+    memset(fifo.p_shm, 0, sizeof(shmhead_t));
+    //指针偏移,得到有效负载起始地址
+    fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
+    memset(fifo.p_InputPayload, 0, INPUT_SHM_SIZE * sizeof(ShmInput_t));
+    fifo.p_OutputPayload =
+        fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
+    memset(fifo.p_OutputPayload, 0, OUTPUT_SHM_SIZE * sizeof(OutputImage));
+
+    fifo.p_shm->blksize = sizeof(ShmInput_t);
+    fifo.p_shm->input_blocks = INPUT_SHM_SIZE;
+    fifo.p_shm->rd_index = 0;
+    fifo.p_shm->wr_index = 0;
+    fifo.p_shm->service_launch = true;
+
+    //创建4个信号量
+    fifo.sem_mutex = sem_open("/sem_input", O_CREAT, 0666, 1);  // 互斥信号量
+    fifo.sem_full =
+        sem_open("/sem_input_full", O_CREAT, 0666, INPUT_SHM_SIZE);  //满信号量
+    fifo.sem_empty =
+        sem_open("/sem_input_empty", O_CREAT, 0666, 0);  // 空信号量
+    fifo.sem_output =
+        sem_open("/sem_output_key", O_CREAT, 0666, 1);  // output互斥
+  } else {
+    RCLCPP_WARN(rclcpp::get_logger("hobotcv_service"),
+                "hobotcv_service has been launched");
+    sem_post(shm_sem);
+    sem_close(shm_sem);
     return -1;
   }
-  //指针偏移,得到有效负载起始地址
-  fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
-  fifo.p_OutputPayload =
-      fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
-  fifo.sem_mutex = sem_open("/sem_input", O_CREAT);
-  fifo.sem_full = sem_open("/sem_input_full", O_CREAT);
-  fifo.sem_empty = sem_open("/sem_input_empty", O_CREAT);
-  fifo.sem_output = sem_open("/sem_output_key", O_CREAT);
+  sem_post(shm_sem);
+  sem_close(shm_sem);
 
   // init vp
   VP_CONFIG_S struVpConf;
@@ -69,7 +106,7 @@ int hobotcv_service::serviceInit() {
         if (now_time - active_time > 10000000) {
           std::stringstream over_time;
           over_time << "group: " << (*it)->group_id
-                    << "is over time! active_time: " << active_time
+                    << " is over time! active_time: " << active_time
                     << " now_time: " << now_time;
           RCLCPP_WARN(rclcpp::get_logger("hobotcv_service"),
                       "%s",
@@ -495,6 +532,7 @@ int hobotcv_service::groupChn5Init(int group_id, int max_w, int max_h) {
   memset(&chn_attr_max, 0, sizeof(chn_attr_max));
   int max_us_w = max_w * 1.5;
   int max_us_h = max_h * 1.5;
+  max_us_w = max_us_w - (max_us_w % 16);
   chn_attr_max.width = max_us_w > 4096 ? 4096 : max_us_w;
   chn_attr_max.height = max_us_h > 2160 ? 2160 : max_us_h;
   chn_attr_max.enScale = 1;
