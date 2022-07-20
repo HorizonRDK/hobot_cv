@@ -14,6 +14,12 @@
 
 #include "include/utils.h"
 
+#include <fcntl.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <cstring>
 #include <iostream>
 
@@ -110,4 +116,11 @@ int32_t BGRToNv12(cv::Mat &bgr_mat, cv::Mat &img_nv12) {
     *nv12++ = *v_data++;
   }
   return 0;
+}
+
+uint64_t currentMicroseconds() {
+  return static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now().time_since_epoch())
+          .count());
 }

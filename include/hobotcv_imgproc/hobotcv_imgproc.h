@@ -20,16 +20,42 @@
 
 namespace hobot_cv {
 
-int hobotcv_resize(
-    cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, int dst_w);
+typedef enum HOBOT_CV_ROTATION_E {
+  ROTATION_0 = 0,
+  ROTATION_90,
+  ROTATION_180,
+  ROTATION_270,
+  ROTATION_MAX
+} ROTATION_E;
 
-cv::Mat hobotcv_crop(cv::Mat &src,
+enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
+
+int hobotcv_resize(const cv::Mat &src,
+                   int src_h,
+                   int src_w,
+                   cv::Mat &dst,
+                   int dst_h,
+                   int dst_w,
+                   HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
+cv::Mat hobotcv_crop(const cv::Mat &src,
                      int src_h,
                      int src_w,
                      int dst_h,
                      int dst_w,
                      const cv::Range &rowRange,
-                     const cv::Range &colRange);
+                     const cv::Range &colRange,
+                     HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
+int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
+
+int hobotcv_imgproc(const cv::Mat &src,
+                    cv::Mat &dst,
+                    int dst_h,
+                    int dst_w,
+                    ROTATION_E rotate,
+                    const cv::Range &rowRange,
+                    const cv::Range &colRange);
 
 }  // namespace hobot_cv
 

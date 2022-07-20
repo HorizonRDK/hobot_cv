@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-#include "include/hobotcv_imgproc.h"
+#include "hobotcv_imgproc/hobotcv_imgproc.h"
 #include "include/utils.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
@@ -102,6 +102,55 @@ int main() {
                 << "\n";
   RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_cropResize.str().c_str());
   writeImg(cropResizemat, "./cropResize.jpg");
+
+  {  // rotate
+    cv::Mat rotate_nv12;
+    auto before_rotate = std::chrono::system_clock::now();
+    auto ret = hobot_cv::hobotcv_rotate(
+        srcmat_nv12, rotate_nv12, hobot_cv::ROTATION_180);
+    auto after_rotate = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_rotate - before_rotate)
+                        .count();
+    if (ret == 0) {
+      std::stringstream ss_rotate;
+      ss_rotate << "rotate image 180 "
+                << ", time cost: " << interval << " ms"
+                << "\n";
+      RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_rotate.str().c_str());
+    }
+    writeImg(rotate_nv12, "./rotate.jpg");
+  }
+
+  {  // crop & resize & rotate
+    cv::Mat cropResizeRotate_nv12;
+    auto before_cropResizeRotate = std::chrono::system_clock::now();
+    auto ret = hobot_cv::hobotcv_imgproc(srcmat_nv12,
+                                         cropResizeRotate_nv12,
+                                         800,
+                                         1440,
+                                         hobot_cv::ROTATION_90,
+                                         cv::Range(540, 1080),
+                                         cv::Range(960, 1920));
+    auto after_cropResizeRotate = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_cropResizeRotate - before_cropResizeRotate)
+                        .count();
+
+    if (ret == 0) {
+      std::stringstream ss_cropResizeRotate;
+      ss_cropResizeRotate << "crop image to " << 960 << "x" << 540 << " pixels"
+                          << " and resize image to " << 1440 << "x" << 800
+                          << " pixels"
+                          << " and rotate 90"
+                          << ", time cost: " << interval << " ms"
+                          << "\n";
+      RCLCPP_INFO(rclcpp::get_logger("example"),
+                  "%s",
+                  ss_cropResizeRotate.str().c_str());
+    }
+    writeImg(cropResizeRotate_nv12, "./cropResizeRotate.jpg");
+  }
 
   return 0;
 }
