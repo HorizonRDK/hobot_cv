@@ -3,7 +3,7 @@ Getting Started with hobot_cv
 
 # 功能介绍
 
-hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate功能，只支持nv12格式。
+hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate以及金字塔缩放功能，只支持nv12格式。
 
 hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x240的CV_16UC1格式TOF数据，高斯核为3x3，且sigma均为0。
 
@@ -71,12 +71,12 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 
 ## package说明
   源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，rotate, 高斯滤波。
-  hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或vps加速，rotate只能使用vps。
+  hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或vps加速，rotate和pyramid只能使用vps。
   如果用户需要低频处理图片则可以选择使用bpu加速，bpu加速不需要对硬件进行单独的属性配置，vps对硬件属性进行配置耗时较长。
   如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发hobotcv_service的超时判断。
 
 ## 接口说明
-### crop&resize&rotate
+### crop&resize&rotate&pyramid
 
 int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
 功能介绍：nv12格式图片的resize功能。
@@ -132,6 +132,38 @@ int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION
 | rotate   | 旋转角度的枚举，为0时关闭rotate  |
 | rowRange | crop的纵向坐标范围，范围为0时关闭crop|
 | colRange | crop的横向坐标范围，范围为0时关闭crop|
+
+int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
+功能介绍：金字塔缩放的功能接口。通过参数attr配置缩小和放大的层数以及roi区域。
+返回值：成功返回0，失败返回非零。
+注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像4096x4096,最小输出图像48x32。缩小分为基础层和roi层，基础层有6层，基于原图片进行缩放，基础层的每一层size都是上一基础层的1/2。放大层数为6层，从原始图像层任意选取6个区域进行放大，放大比例固定。放大层的缩放参数factor从0到5层分别为：50，40，32，25，20，16，在使能放大层数时需将使能层数的缩放参数factor和roi区域参数一同配置。
+放大层计算公式: target_width = (((roi_w / 2 - 1) x 64 - 1) / (factor) + 1) x 2
+              target_hight = (((roi_h / 2 - 1) x 64 - 1) / (factor) + 1) x 2
+              计算结果向下取偶数。
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 原nv12格式的图像矩阵 |
+| output | 金字塔缩放后的图像输出指针，内存由接口调用方提供 |
+| attr | 金字塔缩放层的属性配置参数 |
+
+HOBOT_CV_PYM_SCALE_INFO：缩放层参数信息
+| 参数名   | 解释              |
+| ---------- | ---------------|
+| factor     | 缩放参数        |
+| roi_x      | roi区域起始x坐标 |
+| roi_y      | roi区域起始x坐标 |
+| roi_width  | roi区域宽度     |
+| roi_height | roi区域高度     |
+
+PyramidAttr：金字塔缩放配置
+| 参数名        | 解释                            |
+| -------------| -----------------------------------|
+| timeout      | 获取结果超时时间，单位ms             |
+| ds_layer_en  | 缩小使能层数，取值范围4~23           |
+| us_layer_en  | 放大使能层数，取值范围0~6            |
+| ds_info      | 缩小层的配置信息，基础层加roi层共24层 |
+| us_info      | 放大成的配置信息，共6层              |
 
 ### 高斯滤波
 

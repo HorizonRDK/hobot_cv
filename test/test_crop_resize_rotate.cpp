@@ -139,7 +139,7 @@ int main() {
 
     if (ret == 0) {
       std::stringstream ss_cropResizeRotate;
-      ss_cropResizeRotate << "crop image to " << 960 << "x" << 540 << " pixels"
+      ss_cropResizeRotate << "crop image to " << 960 << "x" << 540 << " pixels "
                           << " and resize image to " << 1440 << "x" << 800
                           << " pixels"
                           << " and rotate 90"
@@ -150,6 +150,64 @@ int main() {
                   ss_cropResizeRotate.str().c_str());
     }
     writeImg(cropResizeRotate_nv12, "./cropResizeRotate.jpg");
+  }
+
+  {  // pyramid
+    hobot_cv::OutputPyramid *pymout = new hobot_cv::OutputPyramid;
+    hobot_cv::PyramidAttr attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.timeout = 2000;
+    attr.ds_layer_en = 23;
+    attr.us_layer_en = 0;
+    attr.us_info[0].factor = 50;
+    attr.us_info[0].roi_width = 1920;
+    attr.us_info[0].roi_height = 1080;
+
+    attr.us_info[1].factor = 40;
+    attr.us_info[1].roi_width = 1920;
+    attr.us_info[1].roi_height = 1080;
+
+    attr.us_info[2].factor = 32;
+    attr.us_info[2].roi_width = 1920;
+    attr.us_info[2].roi_height = 1080;
+
+    attr.us_info[3].factor = 25;
+    attr.us_info[3].roi_x = 300;
+    attr.us_info[3].roi_y = 300;
+    attr.us_info[3].roi_width = 200;
+    attr.us_info[3].roi_height = 200;
+
+    attr.us_info[4].factor = 20;
+    attr.us_info[3].roi_x = 400;
+    attr.us_info[3].roi_y = 400;
+    attr.us_info[4].roi_width = 300;
+    attr.us_info[4].roi_height = 300;
+
+    attr.us_info[5].factor = 16;
+    attr.us_info[5].roi_width = 200;
+    attr.us_info[5].roi_height = 100;
+
+    auto ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
+    if (ret == 0) {
+      int ds_base_index = 0;
+      for (int i = 0; i < attr.ds_layer_en; ++i) {
+        if (i % 4 == 0) {
+          int width = pymout->pym_ds[ds_base_index].width;
+          int height = pymout->pym_ds[ds_base_index].height;
+          if (width != 0 && height != 0) {
+            cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+            memcpy(dstmat.data,
+                   pymout->pym_ds[ds_base_index].img,
+                   width * height * 3 / 2);
+            std::stringstream ss;
+            ss << "./ds_base_" << ds_base_index << ".jpg";
+            writeImg(dstmat, ss.str().c_str());
+          }
+          ds_base_index++;
+        }
+      }
+    }
+    delete pymout;
   }
 
   return 0;

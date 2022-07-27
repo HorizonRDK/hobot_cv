@@ -33,6 +33,8 @@ hobotcv_front::hobotcv_front() {
   roi.y = 0;
   roi.width = 0;
   roi.height = 0;
+
+  pym_param.pymEnable = 0;
 }
 
 hobotcv_front::~hobotcv_front() {}
@@ -56,10 +58,13 @@ int hobotcv_front::shmfifoInit() {
     fifo.p_InputPayload = (char *)(fifo.p_shm + 1);
     fifo.p_OutputPayload =
         fifo.p_InputPayload + INPUT_SHM_SIZE * sizeof(ShmInput_t);
+    fifo.p_PymOutPutPayload =
+        fifo.p_OutputPayload + OUTPUT_SHM_SIZE * sizeof(OutputImage);
     fifo.sem_mutex = sem_open("/sem_input", O_CREAT);
     fifo.sem_full = sem_open("/sem_input_full", O_CREAT);
     fifo.sem_empty = sem_open("/sem_input_empty", O_CREAT);
     fifo.sem_output = sem_open("/sem_output_key", O_CREAT);
+    fifo.sem_pymout = sem_open("/sem_pym_out", O_CREAT);
   }
   return 0;
 }
@@ -191,6 +196,21 @@ int hobotcv_front::prepareCropRoi(int src_height,
   return 0;
 }
 
+int hobotcv_front::preparePymraid(int src_h,
+                                  int src_w,
+                                  const PyramidAttr &attr) {
+  if (src_h > 4096 || src_w > 4096 || src_h < 64 || src_w < 64) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "The src resolution ranges from 64 x 64 to 4096 x 4096 !");
+    return -1;
+  }
+  memcpy(&pym_param.attr, &attr, sizeof(PyramidAttr));
+  pym_param.pymEnable = 1;
+  this->src_h = src_h;
+  this->src_w = src_w;
+  return 0;
+}
+
 int hobotcv_front::createInputImage(const cv::Mat &src) {
   sem_wait(fifo.sem_full);
   sem_wait(fifo.sem_mutex);
@@ -203,11 +223,53 @@ int hobotcv_front::createInputImage(const cv::Mat &src) {
   input->image.output_h = dst_h;
   input->image.output_w = dst_w;
   input->image.rotate = rotate;
+  memcpy(&input->image.pymparam, &pym_param, sizeof(PyramidParam));
   auto stamp = currentMicroseconds();
   std::stringstream ss;
   ss << "/output_" << stamp;
   ss >> str_stamp;
   strcpy(input->stamp, str_stamp.c_str());
+
+  if (pym_param.pymEnable == 1) {
+    sem_wait(fifo.sem_pymout);
+    for (size_t i = 0; i < OUTPUT_PYM_SHM_SIZE; i++) {
+      if (fifo.p_shm->output_pym_shmIndex[i] == 0) {
+        output_pym_Index = i;
+        input->pym_out_index = i;
+        fifo.p_shm->output_pym_shmIndex[i] = 1;
+        break;
+      }
+    }
+    sem_post(fifo.sem_pymout);
+    if (output_pym_Index == -1) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                   "get pymout shmkey failed!!");
+      sem_post(fifo.sem_mutex);
+      shmdt(fifo.p_shm);
+      sem_close(fifo.sem_empty);
+      sem_close(fifo.sem_full);
+      sem_close(fifo.sem_mutex);
+      sem_close(fifo.sem_output);
+      sem_close(fifo.sem_pymout);
+      return -1;
+    }
+
+    hobotcv_pymOutput =
+        (OutputPyramid *)(fifo.p_PymOutPutPayload +
+                          sizeof(OutputPyramid) * output_pym_Index);
+    memset(hobotcv_pymOutput, 0, sizeof(OutputPyramid));
+    hobotcv_pymOutput->isSuccess = false;
+
+    hobotcv_sem_output =
+        sem_open(str_stamp.c_str(), O_CREAT, 0666, 0);  // 输出图片信号量
+    size_t size = input->image.input_h * input->image.input_w * 3 / 2;
+    memcpy(&(input->image.inputData[0]), src.data, size);
+    fifo.p_shm->wr_index =
+        (fifo.p_shm->wr_index + 1) % fifo.p_shm->input_blocks;
+    sem_post(fifo.sem_empty);
+    sem_post(fifo.sem_mutex);
+    return 0;
+  }
 
   sem_wait(fifo.sem_output);
   for (size_t i = 0; i < OUTPUT_SHM_SIZE; i++) {
@@ -227,6 +289,7 @@ int hobotcv_front::createInputImage(const cv::Mat &src) {
     sem_close(fifo.sem_full);
     sem_close(fifo.sem_mutex);
     sem_close(fifo.sem_output);
+    sem_close(fifo.sem_pymout);
     return -1;
   }
 
@@ -262,7 +325,6 @@ int hobotcv_front::createInputImage(const cv::Mat &src) {
     memcpy(&(input->image.inputData[0]), src.data, size);
   }
   fifo.p_shm->wr_index = (fifo.p_shm->wr_index + 1) % fifo.p_shm->input_blocks;
-
   sem_post(fifo.sem_empty);
   sem_post(fifo.sem_mutex);
   return 0;
@@ -274,7 +336,7 @@ int hobotcv_front::getOutputImage(cv::Mat &dst) {
   if (hobotcv_output->isSuccess == false) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
                  "hobotcv_service get frame failed!");
-    shmdt(fifo.p_shm);
+
     sem_close(fifo.sem_empty);
     sem_close(fifo.sem_full);
     sem_close(fifo.sem_mutex);
@@ -284,6 +346,8 @@ int hobotcv_front::getOutputImage(cv::Mat &dst) {
     fifo.p_shm->output_shmIndex[output_shm_Index] = 0;
     sem_post(fifo.sem_output);
     sem_close(fifo.sem_output);
+    sem_close(fifo.sem_pymout);
+    shmdt(fifo.p_shm);
     return -1;
   }
 
@@ -301,6 +365,56 @@ int hobotcv_front::getOutputImage(cv::Mat &dst) {
   sem_wait(fifo.sem_output);
   fifo.p_shm->output_shmIndex[output_shm_Index] = 0;
   sem_post(fifo.sem_output);
+  sem_close(fifo.sem_output);
+  sem_close(fifo.sem_pymout);
+  shmdt(fifo.p_shm);
+  return 0;
+}
+
+int hobotcv_front::getPyramidOutputImage(OutputPyramid *output) {
+  sem_wait(hobotcv_sem_output);
+
+  if (hobotcv_pymOutput->isSuccess == false) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "hobotcv_service get pym frame failed!");
+
+    sem_close(fifo.sem_empty);
+    sem_close(fifo.sem_full);
+    sem_close(fifo.sem_mutex);
+    sem_close(hobotcv_sem_output);
+    sem_unlink(str_stamp.c_str());
+    sem_wait(fifo.sem_pymout);
+    fifo.p_shm->output_pym_shmIndex[0] = 0;
+    sem_post(fifo.sem_pymout);
+    sem_close(fifo.sem_pymout);
+    sem_close(fifo.sem_output);
+    shmdt(fifo.p_shm);
+    return -1;
+  }
+  output->isSuccess = hobotcv_pymOutput->isSuccess;
+  int ds_base_index = 0;
+  for (size_t i = 0; i < pym_param.attr.ds_layer_en; i++) {
+    if (i % 4 == 0) {
+      int width = hobotcv_pymOutput->pym_ds[ds_base_index].width;
+      int height = hobotcv_pymOutput->pym_ds[ds_base_index].height;
+      output->pym_ds[ds_base_index].width = width;
+      output->pym_ds[ds_base_index].height = height;
+      memcpy(&(output->pym_ds[ds_base_index].img[0]),
+             &(hobotcv_pymOutput->pym_ds[ds_base_index].img[0]),
+             width * height * 3 / 2);
+      ds_base_index++;
+    }
+  }
+
+  sem_close(fifo.sem_empty);
+  sem_close(fifo.sem_full);
+  sem_close(fifo.sem_mutex);
+  sem_close(hobotcv_sem_output);
+  sem_unlink(str_stamp.c_str());
+  sem_wait(fifo.sem_pymout);
+  fifo.p_shm->output_pym_shmIndex[0] = 0;
+  sem_post(fifo.sem_pymout);
+  sem_close(fifo.sem_pymout);
   sem_close(fifo.sem_output);
   shmdt(fifo.p_shm);
   return 0;

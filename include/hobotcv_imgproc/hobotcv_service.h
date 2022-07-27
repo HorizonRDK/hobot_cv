@@ -22,7 +22,7 @@
 #include <thread>
 #include <vector>
 
-#include "hobotcv_front.h"
+#include "hobotcv_imgproc/hobotcv_front.h"
 #include "utils.h"
 #include "vio/hb_vio_interface.h"
 #include "vio/hb_vp_api.h"
@@ -74,10 +74,10 @@ class hobotcv_service {
 
   int groupChn5Init(int group_id, int max_w, int max_h);
 
+  int groupPymChnInit(int group_id, int max_w, int max_h);
+
   int setChannelAttr(
       int group_id, int chn_id, int width, int height, int enScale);
-
-  int setchannelCrop(VPS_CROP_INFO_S &cropInfo, int group_id, int chn_id);
 
   int setChannelRotate(int group_id, int chn_id, int rotation);
 
@@ -87,6 +87,12 @@ class hobotcv_service {
                   int chn_id,
                   hb_vio_buffer_t &out_buf,
                   OutputImage *output);
+
+  int copyOutputImage(int stride,
+                      int width,
+                      int height,
+                      address_info_t &img_addr,
+                      char *output);
 
  private:
   std::shared_ptr<std::thread> group_manager_thread;

@@ -16,7 +16,6 @@
 
 #include <iostream>
 
-#include "hobotcv_imgproc/hobotcv_front.h"
 #include "hobotcv_imgproc/hobotcv_service.h"
 #include "include/utils.h"
 #include "rclcpp/rclcpp.hpp"
@@ -357,6 +356,33 @@ int hobotcv_imgproc(const cv::Mat &src,
     return -1;
   }
   ret = hobotcv.getOutputImage(dst);
+  if (ret != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+int hobotcv_pymscale(const cv::Mat &src,
+                     OutputPyramid *output,
+                     const PyramidAttr &attr) {
+  int src_h = src.rows * 2 / 3;
+  int src_w = src.cols;
+  hobotcv_front hobotcv;
+  auto ret = hobotcv.preparePymraid(src_h, src_w, attr);
+  if (0 != ret) {
+    return -1;
+  }
+
+  //获取input共享内存池
+  ret = hobotcv.shmfifoInit();
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.createInputImage(src);
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.getPyramidOutputImage(output);
   if (ret != 0) {
     return -1;
   }
