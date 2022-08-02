@@ -13,6 +13,9 @@
 // limitations under the License.
 #ifndef HOBOTCV_FRONT_H
 #define HOBOTCV_FRONT_H
+#define HOBOTCV_GROUP_SIZE (4)
+#define HOBOTCV_GROUP_BEGIN (4)
+#define HOBOTCV_GROUP_OVER_TIME (10000000)
 
 #include <fcntl.h>
 #include <semaphore.h>
@@ -24,39 +27,43 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "dnn/hb_dnn.h"
+#include "hobotcv_imgproc/hobotcv_imgproc.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
-
-#define IMAGE_MAX_LENGTH (4096 * 2160 * 3 / 2)
-#define INPUT_SHM_SIZE (4)
-#define OUTPUT_SHM_SIZE (8)
+#include "utils.h"
+#include "vio/hb_vio_interface.h"
+#include "vio/hb_vp_api.h"
+#include "vio/hb_vps_api.h"
 
 namespace hobot_cv {
 
-// input共享内存头部信息
-typedef struct shmhead {
-  uint32_t blksize;                      //每一块大小
-  uint32_t input_blocks;                 //共享内存块数
-  uint32_t rd_index;                     //读索引
-  uint32_t wr_index;                     //写索引
-  bool service_launch;                   // hobotcv_service是否已经启动
-  int output_shmIndex[OUTPUT_SHM_SIZE];  //用于获取输出图片共享内存索引
-} shmhead_t;
+typedef struct HOBOT_CV_CHANNEL_INFO {
+  int output_w;
+  int output_h;
+  int rotation;
+  int pym_enable;
+} Channel_info_t;
 
-// input共享内存结构信息
-typedef struct shminfo {
-  hobot_cv::shmhead_t *p_shm;  //头部指针信息
-  char *p_InputPayload;        // Input有效负载起始地址
-  char *p_OutputPayload;       // Output有效负载起始地址
-  int shmid;                   //共享内存id
-  sem_t *sem_mutex;  //用来互斥量的信号量,生产者消费者用来占用仓库的信号量
-  sem_t *sem_full;   //仓库已满的信号量
-  sem_t *sem_empty;  //仓库已空的信号量
-  sem_t *sem_output;  //用于不同调用进程在返回图片时更改output_shmIndex
+typedef struct HOBOT_CV_GROUP_INFO {
+  int group_id;
+  int process_id;  // 每个进程绑定一个固定group
+  uint64_t active_time;
+  int max_w;
+  int max_h;
+  Channel_info_t channels[7];
+} Group_info_t;
+
+typedef struct HOBOT_CV_SHM_FIFO {
+  void *groups;
+  int shmid;
+  sem_t *sem_groups;  // group信息总互斥
+  sem_t *sem_group4;  // group4互斥
+  sem_t *sem_group5;  // group5互斥
+  sem_t *sem_group6;  // group6互斥
+  sem_t *sem_group7;  // group7互斥
 } shmfifo_t;
 
 typedef struct HOBOT_CV_CROP_RECT {
@@ -67,29 +74,10 @@ typedef struct HOBOT_CV_CROP_RECT {
   uint16_t height;
 } CropRect;
 
-typedef struct HOBOT_CV_INPUT_IMAGE {
-  char inputData[IMAGE_MAX_LENGTH];  //输入图片数据，nv12格式
-  int input_w;                       //输入图片宽度
-  int input_h;                       //输入图片高度
-  int output_w;                      //输出图片宽度
-  int output_h;                      //输出图片高度
-  int rotate;  //输出图片旋转角度，0，90，180，270
-  // int pymEnable;                 //金字塔处理使能 0/1
-  // PyramidAttr pymattr;           //金字塔处理配置参数
-} InputImage_t;
-
-typedef struct HOBOT_CV_INPUT {
-  InputImage_t image;
-  char stamp[20];        //用于输出处理后信号量
-  int output_shm_index;  // service处理后的图片数据存放的共享内存索引
-} ShmInput_t;
-
-typedef struct HBOT_CV_OUTPUT_IMAGE {
-  bool isSuccess;
-  char outputData[IMAGE_MAX_LENGTH];
-  int output_w;
-  int output_h;
-} OutputImage;
+typedef struct HOBOT_CV_PYM_PARAM {
+  int pymEnable;  //金字塔处理使能 0/1
+  PyramidAttr attr;
+} PyramidParam;
 
 class hobotcv_front {
  public:
@@ -114,8 +102,37 @@ class hobotcv_front {
                      const cv::Range &colRange,
                      bool printLog = true);
 
-  int createInputImage(const cv::Mat &src);
-  int getOutputImage(cv::Mat &dst);
+  int preparePymraid(int src_height, int src_width, const PyramidAttr &attr);
+
+  int groupScheduler();
+
+  int setVpsChannelAttr();
+
+  int sendVpsFrame(const cv::Mat &src);
+
+  int getChnFrame(cv::Mat &dst);
+
+  int getPyramidOutputImage(OutputPyramid *output);
+
+ private:
+  int createGroup();
+  int setChannelAttr(int enscale);
+  int setChannelRotate();
+  int setChannelPyramidAttr();
+  int group_sem_wait();
+  int group_sem_post();
+  //初始化channel后才支持channel的动态设置
+  int groupChn0Init(int group_id, int max_w, int max_h);
+  int groupChn1Init(int group_id, int max_w, int max_h);
+  int groupChn2Init(int group_id, int max_w, int max_h);
+  int groupChn5Init(int group_id, int max_w, int max_h);
+  int groupPymChnInit(int group_id, int max_w, int max_h);
+
+  int copyOutputImage(int stride,
+                      int width,
+                      int height,
+                      address_info_t &img_addr,
+                      void *output);
 
  public:
   int src_w;
@@ -124,13 +141,17 @@ class hobotcv_front {
   int dst_h;
   int rotate = 0;
   CropRect roi;
+  PyramidParam pym_param;
+  int group_id;
+  int channel_id;
 
  private:
   shmfifo_t fifo;
-  OutputImage *hobotcv_output;  //映射到输出图片共享内存
-  sem_t *hobotcv_sem_output;
-  std::string str_stamp;
-  int output_shm_Index = -1;
+  int processId = 0;
+
+  // vps系统内存
+  uint64_t mmz_paddr[2];
+  char *mmz_vaddr[2];
 };
 
 }  // namespace hobot_cv

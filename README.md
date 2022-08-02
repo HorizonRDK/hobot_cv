@@ -3,7 +3,7 @@ Getting Started with hobot_cv
 
 # 功能介绍
 
-hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate功能，只支持nv12格式。
+hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate以及金字塔缩放功能，只支持nv12格式。
 
 hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x240的CV_16UC1格式TOF数据，高斯核为3x3，且sigma均为0。
 
@@ -62,7 +62,7 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 
 ## 注意事项
   目前hobot_cv crop&resize&rotate只支持nv12格式。
-  若采用vps加速，使用前需要先启动hobotcv_service进程。对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完属性后，超过10s没有输入对应此属性的输入图片，hobotcv_service会判定此输入group失活，销毁删除该输入group，后面再使用需要重新配置。
+  vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与创建该group的进程绑定使用，hobot_cv默认使用group4，group5，group6和group7这四个group，所以hobot_cv最多支持四个进程同时使用vps加速。
   VPS加速，输入输出图片最大4096*2160，最小32*32。最大支持1.5倍放大，1/8缩小。宽度需为16的倍数，高度需为偶数。
   BPU加速，缩放范围是dst/src取值[1/185,256), 输入宽度为[16,4080], 宽度需为16的倍数。输出尺寸要求w<=4080,h<=4080。
   crop功能，crop区域必须在原图像内部。
@@ -71,12 +71,12 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 
 ## package说明
   源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，rotate, 高斯滤波。
-  hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或vps加速，rotate只能使用vps。
+  hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或vps加速，rotate和pyramid只能使用vps。
   如果用户需要低频处理图片则可以选择使用bpu加速，bpu加速不需要对硬件进行单独的属性配置，vps对硬件属性进行配置耗时较长。
-  如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发hobotcv_service的超时判断。
+  如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发超时判断。
 
 ## 接口说明
-### crop&resize&rotate
+### crop&resize&rotate&pyramid
 
 int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
 功能介绍：nv12格式图片的resize功能。
@@ -132,6 +132,23 @@ int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION
 | rotate   | 旋转角度的枚举，为0时关闭rotate  |
 | rowRange | crop的纵向坐标范围，范围为0时关闭crop|
 | colRange | crop的横向坐标范围，范围为0时关闭crop|
+
+int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
+功能介绍：金字塔缩放的功能接口。通过参数attr配置金字塔缩小的输出层数。缩小层共六层，第一层为原图输出，后续每一层都基于原图片进行缩放，每一层size都是上一层的1/2。输出宽高会向下取偶数。
+返回值：成功返回0，失败返回非零。
+注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 原nv12格式的图像矩阵 |
+| output | 金字塔缩放后的图像输出指针，内存由接口调用方提供 |
+| attr | 金字塔缩放层的属性配置参数 |
+
+PyramidAttr：金字塔缩放配置
+| 参数名        | 解释                            |
+| -------------| -----------------------------------|
+| timeout      | 获取结果超时时间，单位ms             |
+| ds_layer_en  | 使能的层数，取值范围1~5。1：输出金字塔第一层和第二层的图片，2：输出金字塔第一层到第三层的图片，以此类推|
 
 ### 高斯滤波
 
@@ -193,9 +210,6 @@ source ./install/local_setup.bash
 # 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
 cp -r install/lib/hobot_cv/config/ .
 
-# 启动hobot_service进程后台运行 (只需启动一次)
-ros2 launch hobot_cv hobot_cv_service.launch.py &
-
 # 启动crop&resize&rotate launch文件
 ros2 launch hobot_cv hobot_cv_crop_resize_rotate.launch.py
 
@@ -213,9 +227,6 @@ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 # config中为example使用的模型，回灌使用的本地图片
 cp -r install/lib/hobot_cv/config/ .
 
-# 如果采用vps加速处理图片，需要先启动hobotcv_service进程
-./install/lib/hobot_cv/hobotcv_service &
-
 # 使用本地JPEG格式图片通过hobot_cv接口实现图片的crop，resize，rotate并以JPEG格式存储变换后的图片
 ./install/lib/hobot_cv/example
 
@@ -228,77 +239,49 @@ ros2 run hobot_cv test_gaussian_blur
 
 ## X3结果展示
 
-### crop&resize&rotate
+### crop&resize&rotate&pyramid
 
-第一次运行
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [hobotcv_service-1]: process started with pid [2859]
-[INFO] [example-2]: process started with pid [2861]
-[hobotcv_service-1] [WARN] [1655951544.671496082] [hobotcv_service]: create input shared memory size: 159252804!!
-[hobotcv_service-1] [WARN] [1655951544.853356374] [hobotcv_service]: create group: 4
-[example-2] [INFO] [1655951545.072880999] [example]:
-[example-2] source image config/test.jpg is 1920x1080 pixels
-[example-2] [INFO] [1655951545.073053874] [example]: resize image to 960x540 pixels, time cost: 234 ms
-[example-2] [INFO] [1655951545.131888624] [example]: crop image to 960x540 pixels, time cost: 2 ms
-[example-2] [BPU_PLAT]BPU Platform Version(1.3.1)!
-[example-2] [HBRT] set log level as 0. version = 3.13.27
-[example-2] [DNN] Runtime version = 1.8.4_(3.13.27 HBRT)
-[example-2] [INFO] [1655951545.219449082] [example]: crop image to 960x540 pixels and resize image to 1920x1080 pixels, time cost: 39 ms
-[example-2]
-[example-2] [INFO] [1655951545.598519832] [example]: rotate image 180 , time cost: 185 ms
-[example-2]
-[hobotcv_service-1] [WARN] [1655951545.812816374] [hobotcv_service]: create group: 5
-[example-2] [INFO] [1655951545.954581457] [example]: crop image to 960x540 pixels and resize image to 1440x810 pixels and rotate 90, time cost: 156 ms
-[example-2]
-[INFO] [example-2]: process has finished cleanly [pid 2861]
-```
-第二次运行
-```
-[INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [hobotcv_service-1]: process started with pid [2895]
-[INFO] [example-2]: process started with pid [2897]
-[hobotcv_service-1] [WARN] [1655951551.361713085] [hobotcv_service]: hobotcv_service has been launched
-[INFO] [hobotcv_service-1]: process has finished cleanly [pid 2895]
-[example-2] [INFO] [1655951551.540412127] [example]:
-[example-2] source image config/test.jpg is 1920x1080 pixels
-[example-2] [INFO] [1655951551.540602627] [example]: resize image to 960x540 pixels, time cost: 21 ms
-[example-2] [INFO] [1655951551.596484377] [example]: crop image to 960x540 pixels, time cost: 1 ms
-[example-2] [BPU_PLAT]BPU Platform Version(1.3.1)!
-[example-2] [HBRT] set log level as 0. version = 3.13.27
-[example-2] [DNN] Runtime version = 1.8.4_(3.13.27 HBRT)
-[example-2] [INFO] [1655951551.678396877] [example]: crop image to 960x540 pixels and resize image to 1920x1080 pixels, time cost: 33 ms
-[example-2]
-[example-2] [INFO] [1655951551.925582127] [example]: rotate image 180 , time cost: 53 ms
-[example-2]
-[example-2] [INFO] [1655951552.166661044] [example]: crop image to 960x540 pixels and resize image to 1440x800 pixels and rotate 90, time cost: 40 ms
-[example-2]
-[INFO] [example-2]: process has finished cleanly [pid 2897]
+[INFO] [example-1]: process started with pid [2840]
+[example-1] [INFO] [1655951548.571526792] [example]:
+[example-1] source image config/test.jpg is 1920x1080 pixels
+[example-1] [INFO] [1655951548.571669584] [example]: resize image to 960x540 pixels, time cost: 280 ms
+[example-1] [INFO] [1655951548.642678167] [example]: resize image to 960x540 pixels, time cost: 14 ms
+[example-1] [INFO] [1655951548.645212667] [example]: crop image to 960x540 pixels, time cost: 2 ms
+[example-1] [INFO] [1655951548.694760625] [example]: crop image to 960x540 pixels, time cost: 1 ms
+[example-1] [BPU_PLAT]BPU Platform Version(1.3.1)!
+[example-1] [HBRT] set log level as 0. version = 3.13.27
+[example-1] [DNN] Runtime version = 1.8.4_(3.13.27 HBRT)
+[example-1] [INFO] [1655951548.734399167] [example]: crop image to 960x540 pixels and resize image to 1920x1080 pixels, time cost: 39 ms
+[example-1]
+[example-1] [INFO] [1655951548.943125584] [example]: crop image to 960x540 pixels and resize image to 1920x1080 pixels, time cost: 15 ms
+[example-1]
+[example-1] [INFO] [1655951549.077968876] [example]: rotate image 180 , time cost: 134 ms
+[example-1]
+[example-1] [INFO] [1655951549.315988376] [example]: second rotate image 180 , time cost: 38 ms
+[example-1]
+[example-1] [INFO] [1655951549.638380626] [example]: crop image to 960x540 pixels  and resize image to 1440x800 pixels and rotate 90, time cost: 322 ms
+[example-1]
+[example-1] [INFO] [1655951549.764873834] [example]: crop image to 960x540 pixels  and resize image to 1440x800 pixels and rotate 90, time cost: 20 ms
+[example-1]
+[example-1] [INFO] [1655951550.045702293] [example]: pyramid image , time cost: 280 ms
+[example-1]
+[example-1] [INFO] [1655951550.327614543] [example]: pyramid image , time cost: 19 ms
+[example-1]
+[INFO] [example-1]: process has finished cleanly [pid 2840]
 ```
 
-根据log显示，测试程序完成了对本地1920x1080分辨率图片resize，crop，crop&resize，rotate，crop&resize&rotate的处理。
+根据log显示，测试程序完成了对本地1920x1080分辨率图片resize，crop，crop&resize，rotate，crop&resize&rotate，pyramid的处理,同一接口分别调用了两次。两次耗时对比如下
 
-第一次运行：
-从1920x1080分辨率图片resize到960x540分辨率，耗时为234 ms。
-
-从1920x1080分辨率图片crop出960x540分辨率的图片，耗时为2 ms。
-
-从1920x1080分辨率图片先crop出960x540分辨率的图片，再将crop出的图片resize到1920x1080分辨率，耗时为39 ms。
-
-将1920x1080分辨率图片旋转180度，耗时185ms。
-
-从1920x1080分辨率图片先crop出960x540分辨率的图片，再将crop出的图片resize到1440x800，最后旋转90度，耗时156ms。
-
-第二次运行：
-从1920x1080分辨率图片resize到960x540分辨率，耗时为21 ms。
-
-从1920x1080分辨率图片crop出960x540分辨率的图片，耗时为2 ms。
-
-从1920x1080分辨率图片先crop出960x540分辨率的图片，再将crop出的图片resize到1920x1080分辨率，耗时为33 ms。
-
-将1920x1080分辨率图片旋转180度，耗时53ms。
-
-从1920x1080分辨率图片先crop出960x540分辨率的图片，再将crop出的图片resize到1440x800，最后旋转90度，耗时40ms。
+| 图片处理                               | 第一次运行耗时 | 第二次运行耗时 |
+| ------------------------------------- | ------------- | ------------- |
+| 1920x1080 resize到960x540              | 280ms        | 14ms          |
+| 1920x1080 crop出960x540                | 2ms          | 1ms           |
+| crop出960x540 resize到1920x1080        | 39ms         | 15ms          |
+| 1920x1080旋转180度                     | 134ms        | 38ms          |
+| crop出960x540 resize到1440x800 旋转90度 | 322m        | 20ms          |
+| pyramid基础层缩小图片                   | 280m        | 19ms          |
 
 因为第一次运行，需要对vps硬件进行配置所以耗时较多，如果不再更改硬件配置属性，则硬件直接进行处理，耗时就会显著降低。
 
@@ -324,6 +307,9 @@ rotate效果展示：
 crop&resize&rotate效果展示:
 
 ![image](./imgs/cropResizeRotate.jpg)
+
+pyramid缩小效果展示,每层为上一层的1/2：
+![image](./imgs/pym/pym_ds.jpg)
 
 ### 高斯滤波
 

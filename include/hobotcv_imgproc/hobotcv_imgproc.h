@@ -15,6 +15,8 @@
 #ifndef HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 #define HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 
+#include <vector>
+
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
@@ -27,6 +29,22 @@ typedef enum HOBOT_CV_ROTATION_E {
   ROTATION_270,
   ROTATION_MAX
 } ROTATION_E;
+
+typedef struct HOBOT_CV_PYM_DS_INFO {
+  int width;
+  int height;
+  std::vector<uint8_t> img;
+} PymDsInfo;
+
+typedef struct HOBOT_CV_PYRAMID_OUTPUT {
+  bool isSuccess;
+  PymDsInfo pym_ds[6];  // down scale output
+} OutputPyramid;
+
+typedef struct HOBOT_CV_PYM_ATTR {
+  int timeout;
+  uint16_t ds_layer_en;  //取值范围 1~5
+} PyramidAttr;
 
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
 
@@ -56,6 +74,10 @@ int hobotcv_imgproc(const cv::Mat &src,
                     ROTATION_E rotate,
                     const cv::Range &rowRange,
                     const cv::Range &colRange);
+
+int hobotcv_pymscale(const cv::Mat &src,
+                     OutputPyramid *output,
+                     const PyramidAttr &attr);
 
 }  // namespace hobot_cv
 
