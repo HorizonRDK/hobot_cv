@@ -62,7 +62,7 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 
 ## 注意事项
   目前hobot_cv crop&resize&rotate只支持nv12格式。
-  vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与进程绑定，hobot_cv最多支持四个进程同时使用vps加速。
+  vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与创建该group的进程绑定使用，hobot_cv默认使用group4，group5，group6和group7这四个group，所以hobot_cv最多支持四个进程同时使用vps加速。
   VPS加速，输入输出图片最大4096*2160，最小32*32。最大支持1.5倍放大，1/8缩小。宽度需为16的倍数，高度需为偶数。
   BPU加速，缩放范围是dst/src取值[1/185,256), 输入宽度为[16,4080], 宽度需为16的倍数。输出尺寸要求w<=4080,h<=4080。
   crop功能，crop区域必须在原图像内部。
@@ -134,9 +134,9 @@ int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION
 | colRange | crop的横向坐标范围，范围为0时关闭crop|
 
 int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
-功能介绍：金字塔缩放的功能接口。通过参数attr配置缩小以及roi区域。缩小图像层数24(0~23)层，其中 0、4、8、12、16、20层为基础Base层，基于原图片进行缩放，基础层的每一层size都是上一基础层的1/2。其余层为ROI层，ROI层基于Base层作缩小(1、2、3 层基于Base0层，5、6、7 层基于Base4层，以此类推)各层可以单独使能，缩放区域、缩放系数可配置。
+功能介绍：金字塔缩放的功能接口。通过参数attr配置金字塔缩小的输出层数。缩小层共六层，第一层为原图输出，后续每一层都基于原图片进行缩放，每一层size都是上一层的1/2。输出宽高会向下取偶数。
 返回值：成功返回0，失败返回非零。
-注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像4096x4096,最小输出图像48x32。本接口暂时只支持缩小基础层的配置。
+注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。
 参数：
 | 参数名   | 解释                 |
 | -------- | --------------------|
@@ -144,21 +144,11 @@ int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAtt
 | output | 金字塔缩放后的图像输出指针，内存由接口调用方提供 |
 | attr | 金字塔缩放层的属性配置参数 |
 
-HOBOT_CV_PYM_SCALE_INFO：缩放层参数信息
-| 参数名   | 解释              |
-| ---------- | ---------------|
-| factor     | 缩放参数        |
-| roi_x      | roi区域起始x坐标 |
-| roi_y      | roi区域起始x坐标 |
-| roi_width  | roi区域宽度     |
-| roi_height | roi区域高度     |
-
 PyramidAttr：金字塔缩放配置
 | 参数名        | 解释                            |
 | -------------| -----------------------------------|
 | timeout      | 获取结果超时时间，单位ms             |
-| ds_layer_en  | 缩小使能层数，取值范围4~23           |
-| ds_info      | 缩小层的配置信息，基础层加roi层共24层 |
+| ds_layer_en  | 使能的层数，取值范围1~5。1：输出金字塔第一层和第二层的图片，2：输出金字塔第一层到第三层的图片，以此类推|
 
 ### 高斯滤波
 
@@ -324,13 +314,8 @@ crop&resize&rotate效果展示:
 
 ![image](./imgs/cropResizeRotate.jpg)
 
-pyramid缩小效果展示：
-![image](./imgs/pym/ds_base_0.jpg)
-![image](./imgs/pym/ds_base_1.jpg)
-![image](./imgs/pym/ds_base_2.jpg)
-![image](./imgs/pym/ds_base_3.jpg)
-![image](./imgs/pym/ds_base_4.jpg)
-![image](./imgs/pym/ds_base_5.jpg)
+pyramid缩小效果展示,每层为上一层的1/2：
+![image](./imgs/pym/pym_ds.jpg)
 
 ### 高斯滤波
 

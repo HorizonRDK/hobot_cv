@@ -15,8 +15,7 @@
 #ifndef HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 #define HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 
-#define PYM_MAX_DS_LENGTH (2048 * 2048 * 3 / 2)
-#define PYM_MAX_US_LENGTH (4096 * 4096 * 3 / 2)
+#include <vector>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
@@ -34,32 +33,17 @@ typedef enum HOBOT_CV_ROTATION_E {
 typedef struct HOBOT_CV_PYM_DS_INFO {
   int width;
   int height;
-  char img[PYM_MAX_DS_LENGTH];
+  std::vector<uint8_t> img;
 } PymDsInfo;
-
-typedef struct HOBOT_CV_PYM_US_INFO {
-  int width;
-  int height;
-  char img[PYM_MAX_US_LENGTH];
-} PymUsInfo;
 
 typedef struct HOBOT_CV_PYRAMID_OUTPUT {
   bool isSuccess;
   PymDsInfo pym_ds[6];  // down scale output
 } OutputPyramid;
 
-struct HOBOT_CV_PYM_SCALE_INFO {
-  uint8_t factor;       //缩放参数（0~63）
-  uint16_t roi_x;       //起始x坐标
-  uint16_t roi_y;       //起始y坐标
-  uint16_t roi_width;   //图像宽
-  uint16_t roi_height;  //图像高
-};
-
 typedef struct HOBOT_CV_PYM_ATTR {
   int timeout;
-  uint16_t ds_layer_en;  //取值范围 4~23
-  HOBOT_CV_PYM_SCALE_INFO ds_info[24];
+  uint16_t ds_layer_en;  //取值范围 1~5
 } PyramidAttr;
 
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };

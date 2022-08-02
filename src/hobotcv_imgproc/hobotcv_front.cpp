@@ -242,6 +242,11 @@ int hobotcv_front::preparePymraid(int src_h,
                  "The src resolution ranges from 64 x 64 to 4096 x 4096 !");
     return -1;
   }
+  if (attr.ds_layer_en < 1 || attr.ds_layer_en > 5) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "ds_layer_en should be in [1, 5] !");
+    return -1;
+  }
   memcpy(&pym_param.attr, &attr, sizeof(PyramidAttr));
   pym_param.pymEnable = 1;
   this->src_h = src_h;
@@ -448,12 +453,9 @@ int hobotcv_front::setChannelPyramidAttr() {
     VPS_PYM_CHN_ATTR_S pym_chn_attr;
     memset(&pym_chn_attr, 0, sizeof(pym_chn_attr));
     pym_chn_attr.timeout = pym_param.attr.timeout;
-    pym_chn_attr.ds_layer_en = pym_param.attr.ds_layer_en;
+    pym_chn_attr.ds_layer_en = pym_param.attr.ds_layer_en * 4;
     pym_chn_attr.frame_id = 0;
     pym_chn_attr.frameDepth = 1;
-    memcpy(pym_chn_attr.ds_info,
-           pym_param.attr.ds_info,
-           sizeof(pym_chn_attr.ds_info));
 
     auto ret = HB_VPS_SetPymChnAttr(group_id, channel_id, &pym_chn_attr);
     if (ret != 0) {
@@ -586,36 +588,16 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
       group_id, channel_id, (void *)&pym_out, pym_param.attr.timeout);
   if (ret == 0) {
     pymOut->isSuccess = true;
-    int ds_base_index = -1;
-    for (int i = 0; i < pym_param.attr.ds_layer_en; i++) {
-      if (i % 4 == 0) {  // ds 基础层
-        ds_base_index++;
-        int out_w = pym_out.pym[ds_base_index].width;
-        int out_h = pym_out.pym[ds_base_index].height;
-        int stride = pym_out.pym[ds_base_index].stride_size;
-        pymOut->pym_ds[ds_base_index].width = out_w;
-        pymOut->pym_ds[ds_base_index].height = out_h;
-        copyOutputImage(stride,
-                        out_w,
-                        out_h,
-                        pym_out.pym[ds_base_index],
-                        pymOut->pym_ds[ds_base_index].img);
-
-      } else {  // ds roi层
-        int roi_index = i - ds_base_index * 4 - 1;
-        if (pym_param.attr.ds_info[i].factor != 0) {
-          int out_w = pym_out.pym_roi[ds_base_index][roi_index].width;
-          int out_h = pym_out.pym_roi[ds_base_index][roi_index].height;
-          int stride = pym_out.pym_roi[ds_base_index][roi_index].stride_size;
-          pymOut->pym_roi[ds_base_index][roi_index].width = out_w;
-          pymOut->pym_roi[ds_base_index][roi_index].height = out_h;
-          copyOutputImage(stride,
-                          out_w,
-                          out_h,
-                          pym_out.pym_roi[ds_base_index][roi_index],
-                          pymOut->pym_roi[ds_base_index][roi_index].img);
-        }
-      }
+    for (int i = 0; i < pym_param.attr.ds_layer_en + 1; i++) {
+      int out_w = pym_out.pym[i].width;
+      int out_h = pym_out.pym[i].height;
+      int stride = pym_out.pym[i].stride_size;
+      pymOut->pym_ds[i].width = out_w;
+      pymOut->pym_ds[i].height = out_h;
+      int size = out_w * out_h * 3 / 2;
+      pymOut->pym_ds[i].img.resize(size);
+      copyOutputImage(
+          stride, out_w, out_h, pym_out.pym[i], &(pymOut->pym_ds[i].img[0]));
     }
     HB_VPS_ReleaseChnFrame(group_id, channel_id, &pym_out);
   } else {
@@ -796,19 +778,20 @@ int hobotcv_front::groupPymChnInit(int group_id, int max_w, int max_h) {
 }
 
 int hobotcv_front::copyOutputImage(
-    int stride, int width, int height, address_info_t &img_addr, char *output) {
+    int stride, int width, int height, address_info_t &img_addr, void *output) {
   if (stride == width) {
     memcpy(output, img_addr.addr[0], width * height);
-    memcpy(output + width * height, img_addr.addr[1], width * height / 2);
+    memcpy(
+        (char *)output + width * height, img_addr.addr[1], width * height / 2);
   } else {
     int i = 0;
     // jump over stride - width Y
     for (i = 0; i < height; i++) {
-      memcpy(output + i * width, img_addr.addr[0] + i * stride, width);
+      memcpy((char *)output + i * width, img_addr.addr[0] + i * stride, width);
     }
     // jump over stride - width UV
     for (i = 0; i < height / 2; i++) {
-      memcpy(output + width * height + i * width,
+      memcpy((char *)output + width * height + i * width,
              img_addr.addr[1] + i * stride,
              width);
     }

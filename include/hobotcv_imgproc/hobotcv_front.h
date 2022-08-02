@@ -132,7 +132,7 @@ class hobotcv_front {
                       int width,
                       int height,
                       address_info_t &img_addr,
-                      char *output);
+                      void *output);
 
  public:
   int src_w;
