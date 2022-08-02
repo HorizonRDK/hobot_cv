@@ -1,5 +1,10 @@
 # Changelog for package hobot_cv
 
+hhp_1.0.4 (2022-08-03)
+------------------
+1. 删除hobotcv_service进程
+2. 支持pyramid输出
+
 hhp_1.0.3 (2022-07-20)
 ------------------
 1. 支持vps图片处理加速。

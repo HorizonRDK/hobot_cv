@@ -266,7 +266,7 @@ int main() {
     hobot_cv::PyramidAttr attr;
     memset(&attr, 0, sizeof(attr));
     attr.timeout = 2000;
-    attr.ds_layer_en = 5;
+    attr.ds_layer_en = 23;
 
     auto before_pyramid = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
@@ -282,16 +282,36 @@ int main() {
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
 
+      int ds_base_index = -1;
       for (int i = 0; i < attr.ds_layer_en + 1; ++i) {
-        int width = pymout->pym_ds[i].width;
-        int height = pymout->pym_ds[i].height;
-        if (width != 0 || height != 0) {
-          cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
-          memcpy(
-              dstmat.data, &(pymout->pym_ds[i].img[0]), width * height * 3 / 2);
-          std::stringstream ss;
-          ss << "./ds_base_" << i << ".jpg";
-          writeImg(dstmat, ss.str().c_str());
+        if (i % 4 == 0) {
+          ds_base_index++;
+          int width = pymout->pym_ds[ds_base_index].width;
+          int height = pymout->pym_ds[ds_base_index].height;
+          if (width != 0 || height != 0) {
+            cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+            memcpy(dstmat.data,
+                   &(pymout->pym_ds[ds_base_index].img[0]),
+                   width * height * 3 / 2);
+            std::stringstream ss;
+            ss << "./ds_base_" << ds_base_index << ".jpg";
+            writeImg(dstmat, ss.str().c_str());
+          }
+        } else {
+          int roi_index = i - ds_base_index * 4 - 1;
+          if (attr.ds_info[i].factor != 0) {
+            int width = pymout->pym_roi[ds_base_index][roi_index].width;
+            int height = pymout->pym_roi[ds_base_index][roi_index].height;
+            if (width != 0 || height != 0) {
+              cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+              memcpy(dstmat.data,
+                     &(pymout->pym_roi[ds_base_index][roi_index].img[0]),
+                     width * height * 3 / 2);
+              std::stringstream ss;
+              ss << "./ds_base_" << ds_base_index << "_roi_" << i << ".jpg";
+              writeImg(dstmat, ss.str().c_str());
+            }
+          }
         }
       }
     }

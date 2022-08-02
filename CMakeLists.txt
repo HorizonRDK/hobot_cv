@@ -66,6 +66,30 @@ target_link_libraries(example
   ${PROJECT_NAME}
   ${VPS_LIBS})
 
+add_executable(crop_example test/test_crop.cpp)
+target_link_libraries(crop_example
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
+
+add_executable(resize_example test/test_resize.cpp)
+target_link_libraries(resize_example
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
+
+add_executable(rotate_example test/test_rotate.cpp)
+target_link_libraries(rotate_example
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
+
+add_executable(pyramid_example test/test_pyramid.cpp)
+target_link_libraries(pyramid_example
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
+
 add_executable(test_gaussian_blur test/test_gaussian_blur.cpp)
 target_link_libraries(test_gaussian_blur
   ${LINK_LIBS}
@@ -90,7 +114,7 @@ install(
 
 # Install executables
 install(
-  TARGETS example test_gaussian_blur
+  TARGETS example crop_example resize_example rotate_example pyramid_example test_gaussian_blur
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
