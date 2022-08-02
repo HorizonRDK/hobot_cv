@@ -210,9 +210,6 @@ source ./install/local_setup.bash
 # 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
 cp -r install/lib/hobot_cv/config/ .
 
-# 启动hobot_service进程后台运行 (只需启动一次)
-ros2 launch hobot_cv hobot_cv_service.launch.py &
-
 # 启动crop&resize&rotate launch文件
 ros2 launch hobot_cv hobot_cv_crop_resize_rotate.launch.py
 
@@ -229,9 +226,6 @@ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 
 # config中为example使用的模型，回灌使用的本地图片
 cp -r install/lib/hobot_cv/config/ .
-
-# 如果采用vps加速处理图片，需要先启动hobotcv_service进程
-./install/lib/hobot_cv/hobotcv_service &
 
 # 使用本地JPEG格式图片通过hobot_cv接口实现图片的crop，resize，rotate并以JPEG格式存储变换后的图片
 ./install/lib/hobot_cv/example
