@@ -137,7 +137,8 @@ int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAtt
 功能介绍：金字塔缩放的功能接口。通过参数attr配置缩小以及roi区域。缩小图像层数24(0~23)层，其中 0、4、8、12、16、20层为基础Base层，基于原图片进行缩放，基础层的每一层size都是上一基础层的1/2。其余层为ROI层，ROI层基于Base层作缩小(1、2、3 层基于Base0层，5、6、7 层基于Base4层，以此类推)各层可以单独使能，缩放区域、缩放系数可配置。
 返回值：成功返回0，失败返回非零。
 注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。基于vps硬件要求，必须使能Base0和Base4层。
-roi层输出计算公式：targetW = (roi_width - 1) x 64 / (64 + 1) + 1; targetH = (((roi_height / 2 - 1) x 64 / (64 + 1)) + 1) x 2;
+roi层输出计算公式：targetW = (roi_width - 1) x 64 / (64 + 1) + 1; targetH = (((roi_height / 2 - 1) x 64 / (64 + 1)) + 1) x 2; tag宽高向下取偶，如得到一个401 x 401的size，会向下取偶得到400 x 400
+
 参数：
 | 参数名   | 解释                 |
 | -------- | --------------------|
@@ -212,8 +213,8 @@ source ./install/local_setup.bash
 # 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
 cp -r install/lib/hobot_cv/config/ .
 
-# 启动crop&resize&rotate launch文件
-ros2 launch hobot_cv hobot_cv_crop_resize_rotate.launch.py
+# 启动crop&resize&rotate&pyramid launch文件
+ros2 launch hobot_cv hobot_cv_crop_resize_rotate_pyramid.launch.py
 
 # 启动test_gaussian_blur launch文件
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
