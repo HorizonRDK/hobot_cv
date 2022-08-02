@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "hobotcv_imgproc/hobotcv_service.h"
+#include "hobotcv_imgproc/hobotcv_front.h"
 #include "include/utils.h"
 #include "rclcpp/rclcpp.hpp"
 
@@ -68,12 +68,15 @@ int hobotcv_vps_resize(const cv::Mat &src,
   if (ret != 0) {
     return -1;
   }
-
-  ret = hobotcv.createInputImage(src);
+  ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;
   }
-  ret = hobotcv.getOutputImage(dst);
+  ret = hobotcv.sendVpsFrame(src);
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.getChnFrame(dst);
   if (ret != 0) {
     return -1;
   }
@@ -286,11 +289,15 @@ int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotation) {
   if (ret != 0) {
     return -1;
   }
-  ret = hobotcv.createInputImage(src);
+  ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;
   }
-  ret = hobotcv.getOutputImage(dst);
+  ret = hobotcv.sendVpsFrame(src);
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.getChnFrame(dst);
   if (ret != 0) {
     return -1;
   }
@@ -351,11 +358,15 @@ int hobotcv_imgproc(const cv::Mat &src,
   if (ret != 0) {
     return -1;
   }
-  ret = hobotcv.createInputImage(src);
+  ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;
   }
-  ret = hobotcv.getOutputImage(dst);
+  ret = hobotcv.sendVpsFrame(src);
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.getChnFrame(dst);
   if (ret != 0) {
     return -1;
   }
@@ -365,6 +376,7 @@ int hobotcv_imgproc(const cv::Mat &src,
 int hobotcv_pymscale(const cv::Mat &src,
                      OutputPyramid *output,
                      const PyramidAttr &attr) {
+  // RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "Into shmfifoInit");
   int src_h = src.rows * 2 / 3;
   int src_w = src.cols;
   hobotcv_front hobotcv;
@@ -378,7 +390,11 @@ int hobotcv_pymscale(const cv::Mat &src,
   if (ret != 0) {
     return -1;
   }
-  ret = hobotcv.createInputImage(src);
+  ret = hobotcv.groupScheduler();
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.sendVpsFrame(src);
   if (ret != 0) {
     return -1;
   }

@@ -42,26 +42,45 @@ int main() {
   auto dst_width = src_width / 2;
   cv::Mat dstmat_nv12(dst_height * 3 / 2, dst_width, CV_8UC1);
 
-  auto before_resize = std::chrono::system_clock::now();
-  auto ret = hobot_cv::hobotcv_resize(
-      srcmat_nv12, src_height, src_width, dstmat_nv12, dst_height, dst_width);
-  auto after_resize = std::chrono::system_clock::now();
-  auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
-                      after_resize - before_resize)
-                      .count();
-  std::stringstream ss;
-  ss << "\n"
-     << "source image " << image_file << " is " << src_width << "x"
-     << src_height << " pixels";
-  RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss.str().c_str());
-  if (0 == ret) {
-    std::stringstream ss_resize;
-    ss_resize << "resize image to " << dst_width << "x" << dst_height
-              << " pixels"
-              << ", time cost: " << interval << " ms";
-    RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_resize.str().c_str());
+  {  // resize first
+    auto before_resize = std::chrono::system_clock::now();
+    auto ret = hobot_cv::hobotcv_resize(
+        srcmat_nv12, src_height, src_width, dstmat_nv12, dst_height, dst_width);
+    auto after_resize = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_resize - before_resize)
+                        .count();
+    std::stringstream ss;
+    ss << "\n"
+       << "source image " << image_file << " is " << src_width << "x"
+       << src_height << " pixels";
+    RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss.str().c_str());
+    if (0 == ret) {
+      std::stringstream ss_resize;
+      ss_resize << "resize image to " << dst_width << "x" << dst_height
+                << " pixels"
+                << ", time cost: " << interval << " ms";
+      RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_resize.str().c_str());
+    }
+    writeImg(dstmat_nv12, "./resize.jpg");
   }
-  writeImg(dstmat_nv12, "./resize.jpg");
+
+  {  // resieze second
+    auto before_resize = std::chrono::system_clock::now();
+    auto ret = hobot_cv::hobotcv_resize(
+        srcmat_nv12, src_height, src_width, dstmat_nv12, dst_height, dst_width);
+    auto after_resize = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_resize - before_resize)
+                        .count();
+    if (0 == ret) {
+      std::stringstream ss_resize;
+      ss_resize << "second resize image to " << dst_width << "x" << dst_height
+                << " pixels"
+                << ", time cost: " << interval << " ms";
+      RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_resize.str().c_str());
+    }
+  }
 
   auto before_crop = std::chrono::system_clock::now();
   auto cropmat = hobot_cv::hobotcv_crop(srcmat_nv12,
@@ -72,9 +91,9 @@ int main() {
                                         cv::Range(0, dst_height),
                                         cv::Range(0, dst_width));
   auto after_crop = std::chrono::system_clock::now();
-  interval = std::chrono::duration_cast<std::chrono::milliseconds>(after_crop -
-                                                                   before_crop)
-                 .count();
+  auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      after_crop - before_crop)
+                      .count();
   std::stringstream ss_crop;
   ss_crop << "crop image to " << dst_width << "x" << dst_height << " pixels"
           << ", time cost: " << interval << " ms";
@@ -103,7 +122,7 @@ int main() {
   RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_cropResize.str().c_str());
   writeImg(cropResizemat, "./cropResize.jpg");
 
-  {  // rotate
+  {  // rotate first
     cv::Mat rotate_nv12;
     auto before_rotate = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_rotate(
@@ -122,7 +141,25 @@ int main() {
     writeImg(rotate_nv12, "./rotate.jpg");
   }
 
-  {  // crop & resize & rotate
+  {  // rotate second
+    cv::Mat rotate_nv12;
+    auto before_rotate = std::chrono::system_clock::now();
+    auto ret = hobot_cv::hobotcv_rotate(
+        srcmat_nv12, rotate_nv12, hobot_cv::ROTATION_180);
+    auto after_rotate = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_rotate - before_rotate)
+                        .count();
+    if (ret == 0) {
+      std::stringstream ss_rotate;
+      ss_rotate << "second rotate image 180 "
+                << ", time cost: " << interval << " ms"
+                << "\n";
+      RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_rotate.str().c_str());
+    }
+  }
+
+  {  // crop & resize & rotate first
     cv::Mat cropResizeRotate_nv12;
     auto before_cropResizeRotate = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_imgproc(srcmat_nv12,
@@ -152,49 +189,63 @@ int main() {
     writeImg(cropResizeRotate_nv12, "./cropResizeRotate.jpg");
   }
 
+  {  // crop & resize & rotate second
+    cv::Mat cropResizeRotate_nv12;
+    auto before_cropResizeRotate = std::chrono::system_clock::now();
+    auto ret = hobot_cv::hobotcv_imgproc(srcmat_nv12,
+                                         cropResizeRotate_nv12,
+                                         800,
+                                         1440,
+                                         hobot_cv::ROTATION_90,
+                                         cv::Range(540, 1080),
+                                         cv::Range(960, 1920));
+    auto after_cropResizeRotate = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_cropResizeRotate - before_cropResizeRotate)
+                        .count();
+
+    if (ret == 0) {
+      std::stringstream ss_cropResizeRotate;
+      ss_cropResizeRotate << "crop image to " << 960 << "x" << 540 << " pixels "
+                          << " and resize image to " << 1440 << "x" << 800
+                          << " pixels"
+                          << " and rotate 90"
+                          << ", time cost: " << interval << " ms"
+                          << "\n";
+      RCLCPP_INFO(rclcpp::get_logger("example"),
+                  "%s",
+                  ss_cropResizeRotate.str().c_str());
+    }
+  }
+
   {  // pyramid
     hobot_cv::OutputPyramid *pymout = new hobot_cv::OutputPyramid;
     hobot_cv::PyramidAttr attr;
     memset(&attr, 0, sizeof(attr));
     attr.timeout = 2000;
     attr.ds_layer_en = 23;
-    attr.us_layer_en = 0;
-    attr.us_info[0].factor = 50;
-    attr.us_info[0].roi_width = 1920;
-    attr.us_info[0].roi_height = 1080;
 
-    attr.us_info[1].factor = 40;
-    attr.us_info[1].roi_width = 1920;
-    attr.us_info[1].roi_height = 1080;
-
-    attr.us_info[2].factor = 32;
-    attr.us_info[2].roi_width = 1920;
-    attr.us_info[2].roi_height = 1080;
-
-    attr.us_info[3].factor = 25;
-    attr.us_info[3].roi_x = 300;
-    attr.us_info[3].roi_y = 300;
-    attr.us_info[3].roi_width = 200;
-    attr.us_info[3].roi_height = 200;
-
-    attr.us_info[4].factor = 20;
-    attr.us_info[3].roi_x = 400;
-    attr.us_info[3].roi_y = 400;
-    attr.us_info[4].roi_width = 300;
-    attr.us_info[4].roi_height = 300;
-
-    attr.us_info[5].factor = 16;
-    attr.us_info[5].roi_width = 200;
-    attr.us_info[5].roi_height = 100;
-
+    auto before_pyramid = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
+    auto after_pyramid = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_pyramid - before_pyramid)
+                        .count();
     if (ret == 0) {
-      int ds_base_index = 0;
+      std::stringstream ss_pyramid;
+      ss_pyramid << "pyramid image "
+                 << ", time cost: " << interval << " ms"
+                 << "\n";
+      RCLCPP_INFO(
+          rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
+
+      int ds_base_index = -1;
       for (int i = 0; i < attr.ds_layer_en; ++i) {
         if (i % 4 == 0) {
+          ds_base_index++;
           int width = pymout->pym_ds[ds_base_index].width;
           int height = pymout->pym_ds[ds_base_index].height;
-          if (width != 0 && height != 0) {
+          if (width != 0 || height != 0) {
             cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
             memcpy(dstmat.data,
                    pymout->pym_ds[ds_base_index].img,
@@ -203,9 +254,39 @@ int main() {
             ss << "./ds_base_" << ds_base_index << ".jpg";
             writeImg(dstmat, ss.str().c_str());
           }
-          ds_base_index++;
+        } else {
+          int roi_index = i - ds_base_index * 4 - 1;
+          if (attr.ds_info[i].factor != 0) {
+            int width = pymout->pym_roi[ds_base_index][roi_index].width;
+            int height = pymout->pym_roi[ds_base_index][roi_index].height;
+            if (width != 0 || height != 0) {
+              cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+              memcpy(dstmat.data,
+                     pymout->pym_roi[ds_base_index][roi_index].img,
+                     width * height * 3 / 2);
+              std::stringstream ss;
+              ss << "./ds_base_" << ds_base_index << "roi_" << i << ".jpg";
+              writeImg(dstmat, ss.str().c_str());
+            }
+          }
         }
       }
+    }
+
+    // pyramid second
+    before_pyramid = std::chrono::system_clock::now();
+    ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
+    after_pyramid = std::chrono::system_clock::now();
+    interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                   after_pyramid - before_pyramid)
+                   .count();
+    if (ret == 0) {
+      std::stringstream ss_pyramid;
+      ss_pyramid << "pyramid image "
+                 << ", time cost: " << interval << " ms"
+                 << "\n";
+      RCLCPP_INFO(
+          rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
     }
     delete pymout;
   }

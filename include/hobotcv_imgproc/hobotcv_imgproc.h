@@ -46,8 +46,6 @@ typedef struct HOBOT_CV_PYM_US_INFO {
 typedef struct HOBOT_CV_PYRAMID_OUTPUT {
   bool isSuccess;
   PymDsInfo pym_ds[6];  // down scale output
-  // PymInfo pym_roi[6][3];  // roi
-  // PymUsInfo pym_us[6];  // up scale output
 } OutputPyramid;
 
 struct HOBOT_CV_PYM_SCALE_INFO {
@@ -61,9 +59,7 @@ struct HOBOT_CV_PYM_SCALE_INFO {
 typedef struct HOBOT_CV_PYM_ATTR {
   int timeout;
   uint16_t ds_layer_en;  //取值范围 4~23
-  uint16_t us_layer_en;  //取值范围0~6
   HOBOT_CV_PYM_SCALE_INFO ds_info[24];
-  HOBOT_CV_PYM_SCALE_INFO us_info[6];
 } PyramidAttr;
 
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
