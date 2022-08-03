@@ -153,6 +153,13 @@ PyramidAttr：金字塔缩放配置
 | ds_layer_en  | 使能的层数，取值范围[4,23]，4：使能0到4层，5：使能0到5层，以此类推。基于vps硬件要求，必须使能Base0和Base4层，所以取值最小为4 |
 | ds_info      | 缩小层的配置信息，基础层加roi层共24层 |
 
+OutputPyramid：金字塔缩放图片输出数据结构
+| 参数名        | 解释                            |
+| -------------| -----------------------------------|
+| isSuccess      | 接口处理图片是否成功，0：失败 1：成功             |
+| pym_ds  | 输出基础层图片的数组，基础层有六层。具体某一层输出是否有效要看PyramidAttr中是否对该层进行使能 |
+| pym_roi      | 输出roi层图片的二维数组，每一个基础层对应三个roi层。具体某一层输出是否有效要看PyramidAttr中是否对该层进行使能 |
+
 ### 高斯滤波
 
 int HobotCVGaussianBlurCreate(HobotGaussianBlurParam param, HobotCVGaussianBlurHandle *phandle);

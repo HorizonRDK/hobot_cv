@@ -42,18 +42,18 @@ typedef struct HOBOT_CV_PYRAMID_OUTPUT {
   PymDsInfo pym_roi[6][3];  // roi
 } OutputPyramid;
 
-struct HOBOT_CV_PYM_SCALE_INFO {
+typedef struct HOBOT_CV_PYM_SCALE_INFO {
   uint8_t factor;       //缩放参数（0~63）
   uint16_t roi_x;       //起始x坐标
   uint16_t roi_y;       //起始y坐标
   uint16_t roi_width;   //图像宽
   uint16_t roi_height;  //图像高
-};
+} PymramidScaleInfo;
 
 typedef struct HOBOT_CV_PYM_ATTR {
   int timeout;
   uint16_t ds_layer_en;  //取值范围 4~23
-  HOBOT_CV_PYM_SCALE_INFO ds_info[24];
+  PymramidScaleInfo ds_info[24];
 } PyramidAttr;
 
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
