@@ -33,6 +33,7 @@
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
+#include "rclcpp/rclcpp.hpp"
 #include "utils.h"
 #include "vio/hb_vio_interface.h"
 #include "vio/hb_vp_api.h"
@@ -49,7 +50,8 @@ typedef struct HOBOT_CV_CHANNEL_INFO {
 
 typedef struct HOBOT_CV_GROUP_INFO {
   int group_id;
-  int process_id;  // 每个进程绑定一个固定group
+  int process_id;   // 每个进程绑定一个固定group
+  int group_state;  // group状态，是否已经被系统释放
   uint64_t active_time;
   int max_w;
   int max_h;
@@ -78,6 +80,52 @@ typedef struct HOBOT_CV_PYM_PARAM {
   int pymEnable;  //金字塔处理使能 0/1
   PyramidAttr attr;
 } PyramidParam;
+
+class hobotcv_single {
+ public:
+  ~hobotcv_single() {
+    fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT);
+    fifo.groups = shmat(fifo.shmid, NULL, 0);
+    if (fifo.groups == (void *)-1) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobotcv_single"),
+                   "shmfifo shmat failed!!");
+      sem_close(fifo.sem_groups);
+      return;
+    }
+    sem_wait(fifo.sem_groups);
+    if (group_id >= HOBOTCV_GROUP_BEGIN) {
+      Group_info_t *group =
+          (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
+      group->group_state = 1;
+    }
+    sem_post(fifo.sem_groups);
+    sem_close(fifo.sem_groups);
+  }
+
+  hobotcv_single(const hobotcv_single &) = delete;
+  hobotcv_single &operator=(const hobotcv_single &) = delete;
+
+  static hobotcv_single &getSingleObj() {
+    static hobotcv_single obj;
+    return obj;
+  }
+
+  shmfifo_t fifo;
+  int group_id;
+
+ private:
+  hobotcv_single() {
+    // init vp
+    VP_CONFIG_S struVpConf;
+    memset(&struVpConf, 0x00, sizeof(VP_CONFIG_S));
+    struVpConf.u32MaxPoolCnt = 32;
+    HB_VP_SetConfig(&struVpConf);
+    int ret = HB_VP_Init();
+    if (0 != ret) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed!!");
+    }
+  }
+};
 
 class hobotcv_front {
  public:
@@ -146,7 +194,7 @@ class hobotcv_front {
   int channel_id;
 
  private:
-  shmfifo_t fifo;
+  hobotcv_single &observe;
   int processId = 0;
   int ds_layer_en = 0;
 

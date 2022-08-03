@@ -22,12 +22,11 @@
 #include <sstream>
 #include <string>
 
-#include "rclcpp/rclcpp.hpp"
 #include "utils.h"
 
 namespace hobot_cv {
 
-hobotcv_front::hobotcv_front() {
+hobotcv_front::hobotcv_front() : observe(hobotcv_single::getSingleObj()) {
   group_id = -1;
   roi.cropEnable = 0;
   roi.x = 0;
@@ -40,7 +39,7 @@ hobotcv_front::hobotcv_front() {
 hobotcv_front::~hobotcv_front() {}
 
 int hobotcv_front::shmfifoInit() {
-  memset(&fifo, 0, sizeof(shmfifo_t));
+  memset(&(observe.fifo), 0, sizeof(shmfifo_t));
   // Init sem
   //创建共享内存互斥信号
   sem_t *shm_sem = sem_open("/sem_shm", O_CREAT, 0666, 1);
@@ -49,58 +48,45 @@ int hobotcv_front::shmfifoInit() {
   if (shmid < 0) {
     size_t size = sizeof(Group_info_t) * HOBOTCV_GROUP_SIZE;
     //创建新的共享内存区,返回共享内存标识符
-    fifo.shmid = shmget((key_t)1234, size, IPC_CREAT | 0666);
-    if (fifo.shmid == -1) {
+    observe.fifo.shmid = shmget((key_t)1234, size, IPC_CREAT | 0666);
+    if (observe.fifo.shmid == -1) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmget failed!!");
       sem_post(shm_sem);
       sem_close(shm_sem);
       return -1;
     }
 
-    fifo.groups = shmat(fifo.shmid, NULL, 0);
-    if (fifo.groups == (void *)-1) {
+    observe.fifo.groups = shmat(observe.fifo.shmid, NULL, 0);
+    if (observe.fifo.groups == (void *)-1) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
       sem_post(shm_sem);
       sem_close(shm_sem);
       return -1;
     }
-    memset(fifo.groups, 0, sizeof(Group_info_t) * HOBOTCV_GROUP_SIZE);
+    memset(observe.fifo.groups, 0, size);
 
     //创建信号量
-    fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT, 0666, 1);
-    fifo.sem_group4 = sem_open("/sem_group4", O_CREAT, 0666, 1);
-    fifo.sem_group5 = sem_open("/sem_group5", O_CREAT, 0666, 1);
-    fifo.sem_group6 = sem_open("/sem_group6", O_CREAT, 0666, 1);
-    fifo.sem_group7 = sem_open("/sem_group7", O_CREAT, 0666, 1);
-
-    // init vp
-    VP_CONFIG_S struVpConf;
-    memset(&struVpConf, 0x00, sizeof(VP_CONFIG_S));
-    struVpConf.u32MaxPoolCnt = 32;
-    HB_VP_SetConfig(&struVpConf);
-    int ret = HB_VP_Init();
-    if (0 != ret) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed!!");
-      sem_post(shm_sem);
-      sem_close(shm_sem);
-      return -1;
-    }
+    observe.fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT, 0666, 1);
+    observe.fifo.sem_group4 = sem_open("/sem_group4", O_CREAT, 0666, 1);
+    observe.fifo.sem_group5 = sem_open("/sem_group5", O_CREAT, 0666, 1);
+    observe.fifo.sem_group6 = sem_open("/sem_group6", O_CREAT, 0666, 1);
+    observe.fifo.sem_group7 = sem_open("/sem_group7", O_CREAT, 0666, 1);
   } else {
-    fifo.shmid = shmid;
+    observe.fifo.shmid = shmid;
     //连接 shm
-    fifo.groups = shmat(fifo.shmid, NULL, 0);
-    if (fifo.groups == (void *)-1) {
+    observe.fifo.groups = shmat(observe.fifo.shmid, NULL, 0);
+    if (observe.fifo.groups == (void *)-1) {
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
       sem_post(shm_sem);
       sem_close(shm_sem);
       return -1;
     }
     //打开信号量
-    fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT);
-    fifo.sem_group4 = sem_open("/sem_group4", O_CREAT);
-    fifo.sem_group5 = sem_open("/sem_group5", O_CREAT);
-    fifo.sem_group6 = sem_open("/sem_group6", O_CREAT);
-    fifo.sem_group7 = sem_open("/sem_group7", O_CREAT);
+    observe.fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT);
+    observe.fifo.sem_group4 = sem_open("/sem_group4", O_CREAT);
+    observe.fifo.sem_group5 = sem_open("/sem_group5", O_CREAT);
+    observe.fifo.sem_group6 = sem_open("/sem_group6", O_CREAT);
+    observe.fifo.sem_group7 = sem_open("/sem_group7", O_CREAT);
   }
   sem_post(shm_sem);
   sem_close(shm_sem);
@@ -264,10 +250,13 @@ int hobotcv_front::groupScheduler() {
   //选取crop区域的宽高作为输入源宽高
   src_h = roi.cropEnable == 1 ? roi.height : src_h;
   src_w = roi.cropEnable == 1 ? roi.width : src_w;
-  sem_wait(fifo.sem_groups);
+  sem_wait(observe.fifo.sem_groups);
   bool have_same_process = false;
   for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
-    Group_info_t *group = (Group_info_t *)(fifo.groups) + i;
+    Group_info_t *group = (Group_info_t *)(observe.fifo.groups) + i;
+    if (group->group_state == 1) {
+      continue;
+    }
     if (group->process_id == processId) {
       if (group->max_h == src_h && src_w == group->max_w) {
         have_same_process = true;
@@ -282,7 +271,7 @@ int hobotcv_front::groupScheduler() {
   if (!have_same_process) {
     auto ret = createGroup();
     if (ret != 0) {
-      sem_post(fifo.sem_groups);
+      sem_post(observe.fifo.sem_groups);
       return -1;
     }
   }
@@ -293,13 +282,13 @@ int hobotcv_front::groupScheduler() {
   int ret = HB_VPS_EnableChn(group_id, channel_id);
   if (0 != ret) {
     if (ret == -268696580) {  //进程退出导致group资源被系统回收，重新创建group
-      Group_info_t *group =
-          (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
+      Group_info_t *group = (Group_info_t *)(observe.fifo.groups) +
+                            (group_id - HOBOTCV_GROUP_BEGIN);
       group->active_time = 1;
       ret = createGroup();
       if (ret != 0) {
         group_sem_post();
-        sem_post(fifo.sem_groups);
+        sem_post(observe.fifo.sem_groups);
         return -1;
       }
       setVpsChannelAttr();  //设置vps通道属性
@@ -311,7 +300,7 @@ int hobotcv_front::groupScheduler() {
                      channel_id,
                      ret);
         group_sem_post();
-        sem_post(fifo.sem_groups);
+        sem_post(observe.fifo.sem_groups);
         return -1;
       }
     } else {
@@ -322,10 +311,10 @@ int hobotcv_front::groupScheduler() {
                    ret);
     }
     group_sem_post();
-    sem_post(fifo.sem_groups);
+    sem_post(observe.fifo.sem_groups);
     return -1;
   }
-  sem_post(fifo.sem_groups);
+  sem_post(observe.fifo.sem_groups);
   return 0;
 }
 
@@ -349,7 +338,7 @@ int hobotcv_front::setVpsChannelAttr() {
       enScale = 0;
     }
     int group_index = group_id - HOBOTCV_GROUP_BEGIN;
-    Group_info_t *group = (Group_info_t *)(fifo.groups) + group_index;
+    Group_info_t *group = (Group_info_t *)(observe.fifo.groups) + group_index;
     if (group->channels[channel_id].output_w != dst_w ||
         group->channels[channel_id].output_h != dst_h) {
       setChannelAttr(enScale);
@@ -366,7 +355,7 @@ int hobotcv_front::setVpsChannelAttr() {
 int hobotcv_front::createGroup() {
   auto now_time = currentMicroseconds();
   for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
-    Group_info_t *group = (Group_info_t *)(fifo.groups) + i;
+    Group_info_t *group = (Group_info_t *)(observe.fifo.groups) + i;
     int groupId = i + HOBOTCV_GROUP_BEGIN;
     if (group->active_time == 0) {
       group->group_id = groupId;
@@ -376,26 +365,25 @@ int hobotcv_front::createGroup() {
       group->process_id = processId;
       group_id = groupId;
       break;
-    } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
-      auto ret = HB_VPS_StopGrp(group->group_id);
-      if (ret == -268696577 || ret == -268696580) {
-        RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
-                    "group%d has been destroyed and will be recreated",
-                    groupId);
-      } else if (ret == 0) {
-        ret = HB_VPS_DestroyGrp(group->group_id);
-        if (ret == -268696577 || ret == -268696580) {
-          RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
-                      "group%d has been destroyed and will be recreated",
-                      groupId);
-        }
-      }
-
+    } else if (group->group_state == 1) {  //被系统回收
       group->group_id = groupId;
       group->max_h = src_h;
       group->max_w = src_w;
       group->active_time = currentMicroseconds();
       group->process_id = processId;
+      group->group_state = 0;
+      group_id = groupId;
+      break;
+    } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
+      //超时，hobotcv回收
+      HB_VPS_StopGrp(group->group_id);
+      HB_VPS_DestroyGrp(group->group_id);
+      group->group_id = groupId;
+      group->max_h = src_h;
+      group->max_w = src_w;
+      group->active_time = currentMicroseconds();
+      group->process_id = processId;
+      group->group_state = 0;
       group_id = groupId;
       break;
     }
@@ -416,6 +404,7 @@ int hobotcv_front::createGroup() {
         rclcpp::get_logger("hobot_cv"), "create group: %d failed!!", group_id);
     return -1;
   }
+  observe.group_id = group_id;
   //启用channel 0，1，2，5,pym=3
   groupChn0Init(group_id, grp_attr.maxW, grp_attr.maxH);
   groupChn1Init(group_id, grp_attr.maxW, grp_attr.maxH);
@@ -575,12 +564,12 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
                  group_id,
                  channel_id);
     group_sem_post();
-    sem_close(fifo.sem_groups);
-    sem_close(fifo.sem_group4);
-    sem_close(fifo.sem_group5);
-    sem_close(fifo.sem_group6);
-    sem_close(fifo.sem_group7);
-    shmdt(fifo.groups);
+    sem_close(observe.fifo.sem_groups);
+    sem_close(observe.fifo.sem_group4);
+    sem_close(observe.fifo.sem_group5);
+    sem_close(observe.fifo.sem_group6);
+    sem_close(observe.fifo.sem_group7);
+    shmdt(observe.fifo.groups);
     return -1;
   }
 
@@ -596,12 +585,12 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
                   reinterpret_cast<char *>(dst.data));
   HB_VPS_ReleaseChnFrame(group_id, channel_id, &out_buf);
   group_sem_post();
-  sem_close(fifo.sem_groups);
-  sem_close(fifo.sem_group4);
-  sem_close(fifo.sem_group5);
-  sem_close(fifo.sem_group6);
-  sem_close(fifo.sem_group7);
-  shmdt(fifo.groups);
+  sem_close(observe.fifo.sem_groups);
+  sem_close(observe.fifo.sem_group4);
+  sem_close(observe.fifo.sem_group5);
+  sem_close(observe.fifo.sem_group6);
+  sem_close(observe.fifo.sem_group7);
+  shmdt(observe.fifo.groups);
   return 0;
 }
 
@@ -659,24 +648,24 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
   }
 
   group_sem_post();
-  sem_close(fifo.sem_groups);
-  sem_close(fifo.sem_group4);
-  sem_close(fifo.sem_group5);
-  sem_close(fifo.sem_group6);
-  sem_close(fifo.sem_group7);
-  shmdt(fifo.groups);
+  sem_close(observe.fifo.sem_groups);
+  sem_close(observe.fifo.sem_group4);
+  sem_close(observe.fifo.sem_group5);
+  sem_close(observe.fifo.sem_group6);
+  sem_close(observe.fifo.sem_group7);
+  shmdt(observe.fifo.groups);
   return 0;
 }
 
 int hobotcv_front::group_sem_wait() {
   if (4 == group_id) {
-    sem_wait(fifo.sem_group4);
+    sem_wait(observe.fifo.sem_group4);
   } else if (5 == group_id) {
-    sem_wait(fifo.sem_group5);
+    sem_wait(observe.fifo.sem_group5);
   } else if (6 == group_id) {
-    sem_wait(fifo.sem_group6);
+    sem_wait(observe.fifo.sem_group6);
   } else if (7 == group_id) {
-    sem_wait(fifo.sem_group7);
+    sem_wait(observe.fifo.sem_group7);
   } else {
     return -1;
   }
@@ -685,13 +674,13 @@ int hobotcv_front::group_sem_wait() {
 
 int hobotcv_front::group_sem_post() {
   if (4 == group_id) {
-    sem_post(fifo.sem_group4);
+    sem_post(observe.fifo.sem_group4);
   } else if (5 == group_id) {
-    sem_post(fifo.sem_group5);
+    sem_post(observe.fifo.sem_group5);
   } else if (6 == group_id) {
-    sem_post(fifo.sem_group6);
+    sem_post(observe.fifo.sem_group6);
   } else if (7 == group_id) {
-    sem_post(fifo.sem_group7);
+    sem_post(observe.fifo.sem_group7);
   } else {
     return -1;
   }
