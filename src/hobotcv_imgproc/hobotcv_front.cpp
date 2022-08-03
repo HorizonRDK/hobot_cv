@@ -242,15 +242,20 @@ int hobotcv_front::preparePymraid(int src_h,
                  "The src resolution ranges from 64 x 64 to 4096 x 4096 !");
     return -1;
   }
-  if (attr.ds_layer_en < 1 || attr.ds_layer_en > 5) {
+  if (attr.ds_info[0].factor == 0 || attr.ds_info[4].factor == 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "ds_layer_en should be in [1, 5] !");
+                 "base0 and base 4 must enable!");
     return -1;
   }
   memcpy(&pym_param.attr, &attr, sizeof(PyramidAttr));
   pym_param.pymEnable = 1;
   this->src_h = src_h;
   this->src_w = src_w;
+  for (size_t i = 0; i < 24; i++) {
+    if (pym_param.attr.ds_info[i].factor != 0) {
+      ds_layer_en = i;
+    }
+  }
   return 0;
 }
 
@@ -372,8 +377,20 @@ int hobotcv_front::createGroup() {
       group_id = groupId;
       break;
     } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
-      HB_VPS_StopGrp(group->group_id);
-      HB_VPS_DestroyGrp(group->group_id);
+      auto ret = HB_VPS_StopGrp(group->group_id);
+      if (ret == -268696577 || ret == -268696580) {
+        RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
+                    "group%d has been destroyed and will be recreated",
+                    groupId);
+      } else if (ret == 0) {
+        ret = HB_VPS_DestroyGrp(group->group_id);
+        if (ret == -268696577 || ret == -268696580) {
+          RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
+                      "group%d has been destroyed and will be recreated",
+                      groupId);
+        }
+      }
+
       group->group_id = groupId;
       group->max_h = src_h;
       group->max_w = src_w;
@@ -383,6 +400,7 @@ int hobotcv_front::createGroup() {
       break;
     }
   }
+
   if (-1 == group_id) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hobot_cv group is full !!");
     return -1;
@@ -453,9 +471,12 @@ int hobotcv_front::setChannelPyramidAttr() {
     VPS_PYM_CHN_ATTR_S pym_chn_attr;
     memset(&pym_chn_attr, 0, sizeof(pym_chn_attr));
     pym_chn_attr.timeout = pym_param.attr.timeout;
-    pym_chn_attr.ds_layer_en = pym_param.attr.ds_layer_en * 4;
+    pym_chn_attr.ds_layer_en = ds_layer_en;
     pym_chn_attr.frame_id = 0;
     pym_chn_attr.frameDepth = 1;
+    memcpy(pym_chn_attr.ds_info,
+           pym_param.attr.ds_info,
+           sizeof(pym_chn_attr.ds_info));
 
     auto ret = HB_VPS_SetPymChnAttr(group_id, channel_id, &pym_chn_attr);
     if (ret != 0) {
@@ -473,6 +494,8 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   int alloclen = src_h * src_w;
   int ret = HB_SYS_Alloc(&(mmz_paddr[0]), (void **)&(mmz_vaddr[0]), alloclen);
   if (ret == -268500036) {  //需要重新初始化
+    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
+                "vp sys memory is being reinitialized");
     VP_CONFIG_S struVpConf;
     memset(&struVpConf, 0x00, sizeof(VP_CONFIG_S));
     struVpConf.u32MaxPoolCnt = 32;
@@ -588,16 +611,47 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
       group_id, channel_id, (void *)&pym_out, pym_param.attr.timeout);
   if (ret == 0) {
     pymOut->isSuccess = true;
-    for (int i = 0; i < pym_param.attr.ds_layer_en + 1; i++) {
-      int out_w = pym_out.pym[i].width;
-      int out_h = pym_out.pym[i].height;
-      int stride = pym_out.pym[i].stride_size;
-      pymOut->pym_ds[i].width = out_w;
-      pymOut->pym_ds[i].height = out_h;
-      int size = out_w * out_h * 3 / 2;
-      pymOut->pym_ds[i].img.resize(size);
-      copyOutputImage(
-          stride, out_w, out_h, pym_out.pym[i], &(pymOut->pym_ds[i].img[0]));
+    int ds_base_index = -1;
+    for (int i = 0; i < 24; i++) {
+      if (i % 4 == 0) {  // ds 基础层
+        ds_base_index++;
+        int out_w = pym_out.pym[ds_base_index].width;
+        int out_h = pym_out.pym[ds_base_index].height;
+        int stride = pym_out.pym[ds_base_index].stride_size;
+        if (out_w != 0 && out_h != 0 && pym_param.attr.ds_info[i].factor != 0) {
+          pymOut->pym_out[i].width = out_w;
+          pymOut->pym_out[i].height = out_h;
+          int size = out_w * out_h * 3 / 2;
+          pymOut->pym_out[i].img.resize(size);
+          copyOutputImage(stride,
+                          out_w,
+                          out_h,
+                          pym_out.pym[ds_base_index],
+                          &(pymOut->pym_out[i].img[0]));
+        } else {
+          pymOut->pym_out[i].width = 0;
+          pymOut->pym_out[i].height = 0;
+        }
+      } else {  // ds roi层
+        int roi_index = i - ds_base_index * 4 - 1;
+        if (pym_param.attr.ds_info[i].factor != 0) {
+          int out_w = pym_out.pym_roi[ds_base_index][roi_index].width;
+          int out_h = pym_out.pym_roi[ds_base_index][roi_index].height;
+          int stride = pym_out.pym_roi[ds_base_index][roi_index].stride_size;
+          pymOut->pym_out[i].width = out_w;
+          pymOut->pym_out[i].height = out_h;
+          int size = out_w * out_h * 3 / 2;
+          pymOut->pym_out[i].img.resize(size);
+          copyOutputImage(stride,
+                          out_w,
+                          out_h,
+                          pym_out.pym_roi[ds_base_index][roi_index],
+                          &(pymOut->pym_out[i].img[0]));
+        } else {
+          pymOut->pym_out[i].width = 0;
+          pymOut->pym_out[i].height = 0;
+        }
+      }
     }
     HB_VPS_ReleaseChnFrame(group_id, channel_id, &pym_out);
   } else {
@@ -740,32 +794,37 @@ int hobotcv_front::groupPymChnInit(int group_id, int max_w, int max_h) {
   memset(&pym_chn_attr, 0, sizeof(pym_chn_attr));
   pym_chn_attr.timeout = 2000;
   pym_chn_attr.ds_layer_en = 23;
-  pym_chn_attr.us_layer_en = 0;
   pym_chn_attr.frame_id = 0;
   pym_chn_attr.frameDepth = 1;
-  pym_chn_attr.us_info[0].factor = 50;
-  pym_chn_attr.us_info[0].roi_width = max_w > 3200 ? 3200 : max_w;
-  pym_chn_attr.us_info[0].roi_height = max_h > 3200 ? 3200 : max_h;
+  int ds_base_index = -1;
+  int roi_maxW = max_w;
+  int roi_maxH = max_h;
+  for (size_t i = 0; i < 24; i++) {  //初始化roi层
+    if (i % 4 == 0) {
+      ds_base_index++;
+      if (ds_base_index == 0) {
+        roi_maxW = max_w;
+        roi_maxH = max_h;
+      } else {
+        roi_maxW = roi_maxW / 2;
+        roi_maxH = roi_maxH / 2;
+        roi_maxW = (roi_maxW % 2) == 0 ? roi_maxW : (roi_maxW - 1);
+        roi_maxH = (roi_maxH % 2) == 0 ? roi_maxH : (roi_maxH - 1);
+      }
+    }
+    if (i % 4 != 0) {
+      int roi_tag_x = (roi_maxW - 1) * 64 / (64 + 1) + 1;
+      int roi_tag_y = (((roi_maxH / 2 - 1) * 64 / (64 + 1)) + 1) * 2;
+      if (roi_tag_x < 48 || roi_tag_y < 32) {
+        pym_chn_attr.ds_info[i].factor = 0;
+      } else {
+        pym_chn_attr.ds_info[i].factor = 1;
+      }
 
-  pym_chn_attr.us_info[1].factor = 40;
-  pym_chn_attr.us_info[1].roi_width = max_w > 2560 ? 2560 : max_w;
-  pym_chn_attr.us_info[1].roi_height = max_h > 2560 ? 2560 : max_h;
-
-  pym_chn_attr.us_info[2].factor = 32;
-  pym_chn_attr.us_info[2].roi_width = max_w > 2048 ? 2048 : max_w;
-  pym_chn_attr.us_info[2].roi_height = max_h > 2048 ? 2048 : max_h;
-
-  pym_chn_attr.us_info[3].factor = 25;
-  pym_chn_attr.us_info[3].roi_width = max_w > 1600 ? 1600 : max_w;
-  pym_chn_attr.us_info[3].roi_height = max_h > 1600 ? 1600 : max_h;
-
-  pym_chn_attr.us_info[4].factor = 20;
-  pym_chn_attr.us_info[4].roi_width = max_w > 1280 ? 1280 : max_w;
-  pym_chn_attr.us_info[4].roi_height = max_h > 1280 ? 1280 : max_h;
-
-  pym_chn_attr.us_info[5].factor = 16;
-  pym_chn_attr.us_info[5].roi_width = max_w > 1024 ? 1024 : max_w;
-  pym_chn_attr.us_info[5].roi_height = max_h > 1024 ? 1024 : max_h;
+      pym_chn_attr.ds_info[i].roi_width = roi_maxW;
+      pym_chn_attr.ds_info[i].roi_height = roi_maxH;
+    }
+  }
 
   ret = HB_VPS_SetPymChnAttr(group_id, 3, &pym_chn_attr);
   if (ret != 0) {

@@ -30,20 +30,28 @@ typedef enum HOBOT_CV_ROTATION_E {
   ROTATION_MAX
 } ROTATION_E;
 
-typedef struct HOBOT_CV_PYM_DS_INFO {
+typedef struct HOBOT_CV_PYM_OUTPUT_INFO {
   int width;
   int height;
   std::vector<uint8_t> img;
-} PymDsInfo;
+} PymOutImg;
 
 typedef struct HOBOT_CV_PYRAMID_OUTPUT {
   bool isSuccess;
-  PymDsInfo pym_ds[6];  // down scale output
+  PymOutImg pym_out[24];
 } OutputPyramid;
+
+typedef struct HOBOT_CV_PYM_SCALE_INFO {
+  uint8_t factor;       //缩放参数（0~63）0:disable
+  uint16_t roi_x;       //起始x坐标
+  uint16_t roi_y;       //起始y坐标
+  uint16_t roi_width;   //图像宽
+  uint16_t roi_height;  //图像高
+} PymramidScaleInfo;
 
 typedef struct HOBOT_CV_PYM_ATTR {
   int timeout;
-  uint16_t ds_layer_en;  //取值范围 1~5
+  PymramidScaleInfo ds_info[24];
 } PyramidAttr;
 
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };

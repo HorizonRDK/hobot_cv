@@ -134,9 +134,11 @@ int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION
 | colRange | crop的横向坐标范围，范围为0时关闭crop|
 
 int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
-功能介绍：金字塔缩放的功能接口。通过参数attr配置金字塔缩小的输出层数。缩小层共六层，第一层为原图输出，后续每一层都基于原图片进行缩放，每一层size都是上一层的1/2。输出宽高会向下取偶数。
+功能介绍：金字塔缩放的功能接口。通过参数attr配置缩小以及roi区域。缩小图像层数24(0~23)层，其中 0、4、8、12、16、20层为基础Base层，基于原图片进行缩放，基础层的每一层size都是上一基础层的1/2。其余层为ROI层，ROI层基于Base层作缩小(1、2、3 层基于Base0层，5、6、7 层基于Base4层，以此类推)各层可以单独使能，缩放区域、缩放系数可配置。
 返回值：成功返回0，失败返回非零。
-注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。
+注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。基于vps硬件要求，必须使能Base0和Base4层。
+roi层输出计算公式：targetW = (roi_width - 1) x 64 / (64 + 1) + 1; targetH = (((roi_height / 2 - 1) x 64 / (64 + 1)) + 1) x 2; tag宽高向下取偶，如得到一个401 x 401的size，会向下取偶得到400 x 400
+
 参数：
 | 参数名   | 解释                 |
 | -------- | --------------------|
@@ -148,7 +150,15 @@ PyramidAttr：金字塔缩放配置
 | 参数名        | 解释                            |
 | -------------| -----------------------------------|
 | timeout      | 获取结果超时时间，单位ms             |
-| ds_layer_en  | 使能的层数，取值范围1~5。1：输出金字塔第一层和第二层的图片，2：输出金字塔第一层到第三层的图片，以此类推|
+| ds_info      | pyramid缩小层的配置信息，基础层加roi层共24层 |
+
+ds_info中的factor取值范围为0~63。对于基础层，factor为0时表示disable该层，非0时表示使能该层。对于roi层，factor为0时表示disable该层，非0时为该roi层的计算因子，该层的输出size可通过roi层输出计算公式获取。
+
+OutputPyramid：金字塔缩放图片输出数据结构
+| 参数名        | 解释                            |
+| -------------| -----------------------------------|
+| isSuccess    | 接口处理图片是否成功，0：失败 1：成功 |
+| pym_out      | pyramid缩放输出图片信息的数组，每一层是否有输出取决于PyramidAttr中对该层的factor配置是否为0 |
 
 ### 高斯滤波
 
@@ -210,8 +220,8 @@ source ./install/local_setup.bash
 # 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
 cp -r install/lib/hobot_cv/config/ .
 
-# 启动crop&resize&rotate launch文件
-ros2 launch hobot_cv hobot_cv_crop_resize_rotate.launch.py
+# 启动crop&resize&rotate&pyramid launch文件
+ros2 launch hobot_cv hobot_cv_crop_resize_rotate_pyramid.launch.py
 
 # 启动test_gaussian_blur launch文件
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。

@@ -148,6 +148,7 @@ class hobotcv_front {
  private:
   shmfifo_t fifo;
   int processId = 0;
+  int ds_layer_en = 0;
 
   // vps系统内存
   uint64_t mmz_paddr[2];

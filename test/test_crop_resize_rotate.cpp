@@ -266,7 +266,25 @@ int main() {
     hobot_cv::PyramidAttr attr;
     memset(&attr, 0, sizeof(attr));
     attr.timeout = 2000;
-    attr.ds_layer_en = 5;
+    // attr.ds_layer_en = 23;
+    attr.ds_info[0].factor = 1;
+    attr.ds_info[4].factor = 2;
+    attr.ds_info[8].factor = 3;
+    attr.ds_info[12].factor = 4;
+    attr.ds_info[16].factor = 1;
+    attr.ds_info[20].factor = 0;
+
+    attr.ds_info[1].factor = 1;
+    attr.ds_info[1].roi_x = 0;
+    attr.ds_info[1].roi_y = 0;
+    attr.ds_info[1].roi_width = 400;
+    attr.ds_info[1].roi_height = 400;
+
+    attr.ds_info[2].factor = 43;
+    attr.ds_info[2].roi_x = 0;
+    attr.ds_info[2].roi_y = 0;
+    attr.ds_info[2].roi_width = 400;
+    attr.ds_info[2].roi_height = 400;
 
     auto before_pyramid = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
@@ -282,16 +300,37 @@ int main() {
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
 
-      for (int i = 0; i < attr.ds_layer_en + 1; ++i) {
-        int width = pymout->pym_ds[i].width;
-        int height = pymout->pym_ds[i].height;
-        if (width != 0 || height != 0) {
-          cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
-          memcpy(
-              dstmat.data, &(pymout->pym_ds[i].img[0]), width * height * 3 / 2);
-          std::stringstream ss;
-          ss << "./ds_base_" << i << ".jpg";
-          writeImg(dstmat, ss.str().c_str());
+      int ds_base_index = -1;
+      for (int i = 0; i < 24; ++i) {
+        if (i % 4 == 0) {
+          ds_base_index++;
+          int width = pymout->pym_out[i].width;
+          int height = pymout->pym_out[i].height;
+          if (width != 0 || height != 0) {
+            cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+            memcpy(dstmat.data,
+                   &(pymout->pym_out[i].img[0]),
+                   width * height * 3 / 2);
+            std::stringstream ss;
+            ss << "./ds_base_" << ds_base_index << ".jpg";
+            writeImg(dstmat, ss.str().c_str());
+          }
+        } else {
+          int roi_index = i - ds_base_index * 4 - 1;
+          if (attr.ds_info[i].factor != 0) {
+            int width = pymout->pym_out[i].width;
+            int height = pymout->pym_out[i].height;
+            if (width != 0 || height != 0) {
+              cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+              memcpy(dstmat.data,
+                     &(pymout->pym_out[i].img[0]),
+                     width * height * 3 / 2);
+              std::stringstream ss;
+              ss << "./ds_base_" << ds_base_index << "_roi_" << roi_index
+                 << ".jpg";
+              writeImg(dstmat, ss.str().c_str());
+            }
+          }
         }
       }
     }
