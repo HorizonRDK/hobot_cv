@@ -46,7 +46,12 @@ int main() {
     hobot_cv::PyramidAttr attr;
     memset(&attr, 0, sizeof(attr));
     attr.timeout = 2000;
-    attr.ds_layer_en = 5;
+    attr.ds_info[0].factor = 1;
+    attr.ds_info[4].factor = 1;
+    attr.ds_info[8].factor = 1;
+    attr.ds_info[12].factor = 1;
+    attr.ds_info[16].factor = 1;
+    attr.ds_info[20].factor = 1;
 
     auto before_pyramid = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
@@ -62,13 +67,14 @@ int main() {
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
 
-      for (int i = 0; i < attr.ds_layer_en + 1; ++i) {
-        int width = pymout->pym_ds[i].width;
-        int height = pymout->pym_ds[i].height;
+      for (int i = 0; i < 24; ++i) {
+        int width = pymout->pym_out[i].width;
+        int height = pymout->pym_out[i].height;
         if (width != 0 || height != 0) {
           cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
-          memcpy(
-              dstmat.data, &(pymout->pym_ds[i].img[0]), width * height * 3 / 2);
+          memcpy(dstmat.data,
+                 &(pymout->pym_out[i].img[0]),
+                 width * height * 3 / 2);
           std::stringstream ss;
           ss << "./ds_base_" << i << ".jpg";
           writeImg(dstmat, ss.str().c_str());
