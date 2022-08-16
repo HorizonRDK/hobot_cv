@@ -112,64 +112,6 @@ int main() {
     analyse_result(hobotcv_output_mat, opencv_output_mat, "Gaussian_mean_Blur");
     std::cout << "-------------------------" << std::endl;
   }
-  // std::string image_file = "config/test.jpg";
-  // cv::Mat bgr_mat = cv::imread(image_file, cv::IMREAD_COLOR);
-  // cv::Mat input_gray;
-  // cv::cvtColor(bgr_mat, input_gray, cv::COLOR_RGB2GRAY);
-  // cv::Mat input_s16;
-  // input_gray.convertTo(input_s16, CV_16SC1);
-
-  // cv::Mat input_u16;
-  // input_gray.convertTo(input_u16, CV_16UC1);
-
-  // RCLCPP_INFO(rclcpp::get_logger("test_neon_blur"),
-  //             "input_s16.type: %d input_s16.depth: %d input_u16.type: %d "
-  //             "input_u16.depth: %d",
-  //             input_s16.type(),
-  //             input_s16.depth(),
-  //             input_u16.type(),
-  //             input_u16.depth());
-
-  // cv::Mat input_s16;
-  // input_u16.convertTo(input_s16, CV_16SC1);
-
-  // cv::Mat input_u16 = cv::imread(image_file, CV_16UC1);
-
-  // cv::Mat input_s16 = cv::imread(image_file, CV_16SC1);
-
-  // cv::Mat dst_mat;
-
-  // auto ret = hobot_cv::HobotGaussianBlur(input_s16, dst_mat, cv::Size(3, 3));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./gaussion_3x3_int.png", dst_mat);
-
-  // ret = hobot_cv::HobotGaussianBlur(input_s16, dst_mat, cv::Size(5, 5));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./gaussion_5x5_int.png", dst_mat);
-
-  // ret = hobot_cv::HobotGaussianBlur(input_u16, dst_mat, cv::Size(3, 3));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./gaussion_3x3_uint.png", dst_mat);
-
-  // ret = hobot_cv::HobotGaussianBlur(input_u16, dst_mat, cv::Size(5, 5));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./gaussion_5x5_uint.png", dst_mat);
-
-  // ret = hobot_cv::HobotMeanBlur(input_s16, dst_mat, cv::Size(3, 3));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./mean_3x3_int.png", dst_mat);
-
-  // ret = hobot_cv::HobotMeanBlur(input_s16, dst_mat, cv::Size(5, 5));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./mean_5x5_int.png", dst_mat);
-
-  // ret = hobot_cv::HobotMeanBlur(input_u16, dst_mat, cv::Size(3, 3));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./mean_3x3_uint.png", dst_mat);
-
-  // ret = hobot_cv::HobotMeanBlur(input_u16, dst_mat, cv::Size(5, 5));
-  // dst_mat.convertTo(dst_mat, CV_8UC1);
-  // cv::imwrite("./mean_5x5_uint.png", dst_mat);
 
   return 0;
 }
