@@ -11,15 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef HOBOTCV_GAUSSIAN_MEAN_NEON_BLUR_HPP_
-#define HOBOTCV_GAUSSIAN_MEAN_NEON_BLUR_HPP_
+#ifndef HOBOTCV_NEON_BLUR_HPP_
+#define HOBOTCV_NEON_BLUR_HPP_
 
 #include "oal_gaussion.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/opencv.hpp"
-#include "rclcpp/rclcpp.hpp"
 
 namespace hobot_cv {
 
@@ -29,4 +26,4 @@ int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 
 }  // namespace hobot_cv
 
-#endif  // HOBOTCV_GAUSSIAN_MEAN_NEON_BLUR_HPP_
+#endif  // HOBOTCV_NEON_BLUR_HPP_

@@ -204,18 +204,22 @@ int hobotcv_front::groupScheduler() {
       continue;
     }
     if (group->process_id == processId) {
+      have_same_process = true;
       if (group->max_h == src_h && src_w == group->max_w) {
-        have_same_process = true;
         group_id = i + HOBOTCV_GROUP_BEGIN;
         group->active_time = currentMicroseconds();
       } else {  // group 输入源不同，重新创建group
-        group->active_time = 1;
+        auto ret = createGroup(group->group_id);
+        if (ret != 0) {
+          sem_post(observe->fifo.sem_groups);
+          return -1;
+        }
       }
       break;
     }
   }
   if (!have_same_process) {
-    auto ret = createGroup();
+    auto ret = createGroup(-1);
     if (ret != 0) {
       sem_post(observe->fifo.sem_groups);
       return -1;
@@ -274,46 +278,61 @@ int hobotcv_front::setVpsChannelAttr() {
   return 0;
 }
 
-int hobotcv_front::createGroup() {
+int hobotcv_front::createGroup(int recreate_id) {
   auto now_time = currentMicroseconds();
-  for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
-    Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + i;
-    int groupId = i + HOBOTCV_GROUP_BEGIN;
-    if (group->active_time == 0) {
-      group->group_id = groupId;
-      group->max_h = src_h;
-      group->max_w = src_w;
-      group->active_time = currentMicroseconds();
-      group->process_id = processId;
-      group->pym_channel = -1;
-      group->group_state = 0;
-      group_id = groupId;
-      break;
-    } else if (group->group_state == 1) {  //被系统回收
-      group->group_id = groupId;
-      group->max_h = src_h;
-      group->max_w = src_w;
-      group->active_time = currentMicroseconds();
-      group->process_id = processId;
-      group->group_state = 0;
-      group->pym_channel = -1;
-      group_id = groupId;
-      break;
-    } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
-      //超时，hobotcv回收
-      HB_VPS_StopGrp(group->group_id);
-      HB_VPS_DestroyGrp(group->group_id);
-      group->group_id = groupId;
-      group->max_h = src_h;
-      group->max_w = src_w;
-      group->active_time = currentMicroseconds();
-      group->process_id = processId;
-      group->group_state = 0;
-      group->pym_channel = -1;
-      memset(group->channels, 0, sizeof(Channel_info_t) * 7);
-      group_id = groupId;
-      break;
+  if (recreate_id == -1) {
+    for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
+      Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + i;
+      int groupId = i + HOBOTCV_GROUP_BEGIN;
+      if (group->active_time == 0) {
+        group->group_id = groupId;
+        group->max_h = src_h;
+        group->max_w = src_w;
+        group->active_time = currentMicroseconds();
+        group->process_id = processId;
+        group->pym_channel = -1;
+        group->group_state = 0;
+        group_id = groupId;
+        break;
+      } else if (group->group_state == 1) {  //被系统回收
+        group->group_id = groupId;
+        group->max_h = src_h;
+        group->max_w = src_w;
+        group->active_time = currentMicroseconds();
+        group->process_id = processId;
+        group->group_state = 0;
+        group->pym_channel = -1;
+        group_id = groupId;
+        break;
+      } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
+        //超时，hobotcv回收
+        HB_VPS_StopGrp(group->group_id);
+        HB_VPS_DestroyGrp(group->group_id);
+        group->group_id = groupId;
+        group->max_h = src_h;
+        group->max_w = src_w;
+        group->active_time = currentMicroseconds();
+        group->process_id = processId;
+        group->group_state = 0;
+        group->pym_channel = -1;
+        memset(group->channels, 0, sizeof(Channel_info_t) * 7);
+        group_id = groupId;
+        break;
+      }
     }
+  } else {  // 销毁重新创建
+    HB_VPS_StopGrp(recreate_id);
+    HB_VPS_DestroyGrp(recreate_id);
+    Group_info_t *group = (Group_info_t *)(observe->fifo.groups) +
+                          (recreate_id - HOBOTCV_GROUP_BEGIN);
+    group->group_id = recreate_id;
+    group->max_h = src_h;
+    group->max_w = src_w;
+    group->active_time = currentMicroseconds();
+    group->process_id = processId;
+    group->pym_channel = -1;
+    group->group_state = 0;
+    group_id = recreate_id;
   }
 
   if (-1 == group_id) {

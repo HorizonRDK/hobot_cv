@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "hobotcv_neon_blur.h"
+
+#include "rclcpp/rclcpp.hpp"
 #include "utils.h"
 
 namespace hobot_cv {

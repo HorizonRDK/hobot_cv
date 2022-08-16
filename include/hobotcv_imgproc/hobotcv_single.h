@@ -93,6 +93,7 @@ class hobotcv_single {
       Group_info_t *group =
           (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
       group->group_state = 1;
+      group->process_id = 0;
       memset(group->channels, 0, sizeof(Channel_info_t) * 7);
     }
     sem_post(fifo.sem_groups);

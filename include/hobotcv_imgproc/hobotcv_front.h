@@ -52,7 +52,7 @@ class hobotcv_front {
   int getPyramidOutputImage(OutputPyramid *output);
 
  private:
-  int createGroup();
+  int createGroup(int group_id = -1);
   int setChannelAttr(int enscale);
   int setChannelRotate();
   int setChannelPyramidAttr();

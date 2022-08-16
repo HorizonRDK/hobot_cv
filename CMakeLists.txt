@@ -42,10 +42,6 @@ ${CMAKE_SYSROOT}/usr/include/opencv/
 library/
 )
 
-# include_directories(
-#   ${CMAKE_SYSROOT}/usr/include/opencv/
-# )
-
 link_directories(
   ${CMAKE_SYSROOT}/usr/lib/hbbpu/
   ${CMAKE_SYSROOT}/usr/lib/hbmedia/
@@ -63,7 +59,7 @@ src/hobotcv_imgproc/hobotcv_front.cpp
 src/hobotcv_imgproc/hobotcv_single.cpp
 src/hobotcv_gaussian_blur.cpp
 src/hobotcv_gaussian_blur_imp.cpp
-src/hobotcv_gaussian_mean_neon_blur.cpp)
+src/hobotcv_neon_blur.cpp)
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
 
 add_executable(example test/test_crop_resize_rotate.cpp)

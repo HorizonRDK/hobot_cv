@@ -252,7 +252,7 @@ ros2 launch hobot_cv hobot_cv_crop_resize_rotate_pyramid.launch.py
 ros2 launch hobot_cv hobot_cv_gaussian_blur.launch.py
 
 # 启动test_neon_blur launch文件
-使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，硬件采用neon加速
+使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，采用neon加速
 ros2 launch hobot_cv hobot_cv_neon_blur.launch.py
 ```
 
@@ -401,8 +401,8 @@ error sum:8.46524e+06,max:2,mean_error:0.439232　//单张图片总误差是：8
 
 平均误差　＝　sum / (width * height) = 8.46524e+06 / (320 * 240)
 
-### neon滤波加速
-使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，硬件采用neon加速。
+### 高斯滤波、均值滤波neon加速
+使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，采用neon加速。
 ```
 [test_neon_blur-1] -------------------------
 [test_neon_blur-1] ===================
