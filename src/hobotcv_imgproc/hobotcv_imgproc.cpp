@@ -64,10 +64,6 @@ int hobotcv_vps_resize(const cv::Mat &src,
     return 0;
   }
 
-  ret = hobotcv.shmfifoInit();
-  if (ret != 0) {
-    return -1;
-  }
   ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;
@@ -284,11 +280,7 @@ int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotation) {
   hobotcv.src_h = src.rows * 2 / 3;
   hobotcv.dst_w = src.cols;
   hobotcv.dst_h = src.rows * 2 / 3;
-  //获取input共享内存池
-  ret = hobotcv.shmfifoInit();
-  if (ret != 0) {
-    return -1;
-  }
+
   ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;
@@ -353,11 +345,6 @@ int hobotcv_imgproc(const cv::Mat &src,
     return 0;
   }
 
-  //获取input共享内存池
-  ret = hobotcv.shmfifoInit();
-  if (ret != 0) {
-    return -1;
-  }
   ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;
@@ -376,7 +363,6 @@ int hobotcv_imgproc(const cv::Mat &src,
 int hobotcv_pymscale(const cv::Mat &src,
                      OutputPyramid *output,
                      const PyramidAttr &attr) {
-  // RCLCPP_WARN(rclcpp::get_logger("hobot_cv"), "Into shmfifoInit");
   int src_h = src.rows * 2 / 3;
   int src_w = src.cols;
   hobotcv_front hobotcv;
@@ -385,11 +371,6 @@ int hobotcv_pymscale(const cv::Mat &src,
     return -1;
   }
 
-  //获取input共享内存池
-  ret = hobotcv.shmfifoInit();
-  if (ret != 0) {
-    return -1;
-  }
   ret = hobotcv.groupScheduler();
   if (ret != 0) {
     return -1;

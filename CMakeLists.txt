@@ -38,33 +38,40 @@ find_package(rclcpp REQUIRED)
 
 include_directories(include
 ${PROJECT_SOURCE_DIR}
+${CMAKE_SYSROOT}/usr/include/opencv/
+library/
 )
 
-include_directories(
-  ${CMAKE_SYSROOT}/usr/include/opencv/
-)
+# include_directories(
+#   ${CMAKE_SYSROOT}/usr/include/opencv/
+# )
 
 link_directories(
   ${CMAKE_SYSROOT}/usr/lib/hbbpu/
   ${CMAKE_SYSROOT}/usr/lib/hbmedia/
+  library/
 )
 
 SET(LINK_LIBS dnn opencv_world)
 SET(VPS_LIBS isp_algo z hbmedia isp ion multimedia iar tinyalsa cjson diag gdcbin vio dl)
+SET(NEON_LIBS oal-gaussion)
 
-add_library(${PROJECT_NAME} SHARED 
-src/utils.cpp 
+add_library(${PROJECT_NAME} SHARED
+src/utils.cpp
 src/hobotcv_imgproc/hobotcv_imgproc.cpp
 src/hobotcv_imgproc/hobotcv_front.cpp
-src/hobotcv_gaussian_blur.cpp 
-src/hobotcv_gaussian_blur_imp.cpp)
-target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS})
+src/hobotcv_imgproc/hobotcv_single.cpp
+src/hobotcv_gaussian_blur.cpp
+src/hobotcv_gaussian_blur_imp.cpp
+src/hobotcv_gaussian_mean_neon_blur.cpp)
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
 
 add_executable(example test/test_crop_resize_rotate.cpp)
 target_link_libraries(example
   ${LINK_LIBS}
   ${PROJECT_NAME}
-  ${VPS_LIBS})
+  ${VPS_LIBS}
+  ${NEON_LIBS})
 
 add_executable(crop_example test/test_crop.cpp)
 target_link_libraries(crop_example
@@ -90,6 +97,13 @@ target_link_libraries(pyramid_example
   ${PROJECT_NAME}
   ${VPS_LIBS})
 
+add_executable(test_neon_blur test/test_neon_blur.cpp)
+target_link_libraries(test_neon_blur
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS}
+  ${NEON_LIBS})
+
 add_executable(test_gaussian_blur test/test_gaussian_blur.cpp)
 target_link_libraries(test_gaussian_blur
   ${LINK_LIBS}
@@ -112,9 +126,14 @@ install(
   DESTINATION include/${PROJECT_NAME}/
 )
 
+# Install library
+install(FILES
+${CMAKE_CURRENT_SOURCE_DIR}/library/liboal-gaussion.so
+DESTINATION lib/)
+
 # Install executables
 install(
-  TARGETS example crop_example resize_example rotate_example pyramid_example test_gaussian_blur
+  TARGETS example crop_example resize_example rotate_example pyramid_example test_gaussian_blur test_neon_blur
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

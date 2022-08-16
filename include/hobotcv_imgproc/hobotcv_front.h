@@ -13,126 +13,15 @@
 // limitations under the License.
 #ifndef HOBOTCV_FRONT_H
 #define HOBOTCV_FRONT_H
-#define HOBOTCV_GROUP_SIZE (4)
-#define HOBOTCV_GROUP_BEGIN (4)
-#define HOBOTCV_GROUP_OVER_TIME (10000000)
 
-#include <fcntl.h>
-#include <semaphore.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <memory>
-#include <string>
-
-#include "dnn/hb_dnn.h"
-#include "hobotcv_imgproc/hobotcv_imgproc.h"
-#include "opencv2/core/mat.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/imgproc.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "utils.h"
-#include "vio/hb_vio_interface.h"
-#include "vio/hb_vp_api.h"
-#include "vio/hb_vps_api.h"
+#include "hobotcv_imgproc/hobotcv_single.h"
 
 namespace hobot_cv {
 
-typedef struct HOBOT_CV_CHANNEL_INFO {
-  int output_w;
-  int output_h;
-  int rotation;
-  int pym_enable;
-} Channel_info_t;
-
-typedef struct HOBOT_CV_GROUP_INFO {
-  int group_id;
-  int process_id;   // 每个进程绑定一个固定group
-  int group_state;  // group状态，是否已经被系统释放
-  uint64_t active_time;
-  int max_w;
-  int max_h;
-  Channel_info_t channels[7];
-} Group_info_t;
-
-typedef struct HOBOT_CV_SHM_FIFO {
-  void *groups;
-  int shmid;
-  sem_t *sem_groups;  // group信息总互斥
-  sem_t *sem_group4;  // group4互斥
-  sem_t *sem_group5;  // group5互斥
-  sem_t *sem_group6;  // group6互斥
-  sem_t *sem_group7;  // group7互斥
-} shmfifo_t;
-
-typedef struct HOBOT_CV_CROP_RECT {
-  int cropEnable;  // crop使能
-  uint16_t x;
-  uint16_t y;
-  uint16_t width;
-  uint16_t height;
-} CropRect;
-
-typedef struct HOBOT_CV_PYM_PARAM {
-  int pymEnable;  //金字塔处理使能 0/1
-  PyramidAttr attr;
-} PyramidParam;
-
-class hobotcv_single {
- public:
-  ~hobotcv_single() {
-    fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT);
-    fifo.groups = shmat(fifo.shmid, NULL, 0);
-    if (fifo.groups == (void *)-1) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobotcv_single"),
-                   "shmfifo shmat failed!!");
-      sem_close(fifo.sem_groups);
-      return;
-    }
-    sem_wait(fifo.sem_groups);
-    if (group_id >= HOBOTCV_GROUP_BEGIN) {
-      Group_info_t *group =
-          (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
-      group->group_state = 1;
-    }
-    sem_post(fifo.sem_groups);
-    sem_close(fifo.sem_groups);
-  }
-
-  hobotcv_single(const hobotcv_single &) = delete;
-  hobotcv_single &operator=(const hobotcv_single &) = delete;
-
-  static hobotcv_single &getSingleObj() {
-    static hobotcv_single obj;
-    return obj;
-  }
-
-  shmfifo_t fifo;
-  int group_id;
-
- private:
-  hobotcv_single() {
-    // init vp
-    VP_CONFIG_S struVpConf;
-    memset(&struVpConf, 0x00, sizeof(VP_CONFIG_S));
-    struVpConf.u32MaxPoolCnt = 32;
-    HB_VP_SetConfig(&struVpConf);
-    int ret = HB_VP_Init();
-    if (0 != ret) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed!!");
-    }
-  }
-};
-
 class hobotcv_front {
  public:
-  hobotcv_front();
+  explicit hobotcv_front();
   ~hobotcv_front();
-
-  int shmfifoInit();
 
   int prepareResizeParam(int src_width,
                          int src_height,
@@ -194,7 +83,7 @@ class hobotcv_front {
   int channel_id;
 
  private:
-  hobotcv_single &observe;
+  hobotcv_single *observe;
   int processId = 0;
   int ds_layer_en = 0;
 

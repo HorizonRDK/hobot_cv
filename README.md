@@ -160,7 +160,7 @@ OutputPyramid：金字塔缩放图片输出数据结构
 | isSuccess    | 接口处理图片是否成功，0：失败 1：成功 |
 | pym_out      | pyramid缩放输出图片信息的数组，每一层是否有输出取决于PyramidAttr中对该层的factor配置是否为0 |
 
-### 高斯滤波
+### 高斯滤波(BPU加速)
 
 int HobotCVGaussianBlurCreate(HobotGaussianBlurParam param, HobotCVGaussianBlurHandle *phandle);
 功能介绍：创建高斯滤波的句柄。
@@ -208,6 +208,30 @@ int HobotCVGaussianBlurDestroy( HobotCVGaussianBlurHandle *phandle);
 | ------- | ---------------------------- |
 | phandle | 创建成功返回的句柄，用于释放 |
 
+### 高斯滤波(neon加速)
+
+int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
+功能介绍：高斯滤波neon加速处理。
+返回值：0表示成功，<0表示失败。
+参数：
+| 参数名  | 解释                         |
+| ------- | ---------------------------- |
+| src | 输入的原始数据矩阵，目前只支持CV_16SC1和CV_16UC1数据类型 |
+| dst | 高斯滤波处理后输出数据矩阵 |
+| ksize | 高斯滤波器模板大小，目前只支持3x3和5x5大小 |
+
+### 均值滤波
+
+int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
+功能介绍：均值滤波neon加速处理。
+返回值：0表示成功，<0表示失败。
+参数：
+| 参数名  | 解释                         |
+| ------- | ---------------------------- |
+| src | 输入的原始数据矩阵，目前只支持CV_16SC1和CV_16UC1数据类型 |
+| dst | 均值滤波处理后输出数据矩阵 |
+| ksize | 均值滤波器模板大小，目前只支持3x3和5x5大小 |
+
 ## 运行
 - 编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行。
 
@@ -226,6 +250,10 @@ ros2 launch hobot_cv hobot_cv_crop_resize_rotate_pyramid.launch.py
 # 启动test_gaussian_blur launch文件
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
 ros2 launch hobot_cv hobot_cv_gaussian_blur.launch.py
+
+# 启动test_neon_blur launch文件
+使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，硬件采用neon加速
+ros2 launch hobot_cv hobot_cv_neon_blur.launch.py
 ```
 
 ## X3 yocto系统上运行
@@ -243,6 +271,10 @@ cp -r install/lib/hobot_cv/config/ .
 # 运行模式2：
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
 ros2 run hobot_cv test_gaussian_blur
+
+# 运行模式3：
+使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，硬件采用neon加速。
+ros2 run hobot_cv test_neon_blur
 ```
 
 # 结果分析
@@ -368,3 +400,46 @@ hobotcv save rate = （guss_time cost time - infe cost time）/ guss_time cost t
 error sum:8.46524e+06,max:2,mean_error:0.439232　//单张图片总误差是：8.46524e+06，单个像素最大误差是：２，平均误差：0.439232
 
 平均误差　＝　sum / (width * height) = 8.46524e+06 / (320 * 240)
+
+### neon滤波加速
+使用本地tof格式图片通过hobot_cv接口时先图片的高斯滤波和均值滤波，硬件采用neon加速。
+```
+[test_neon_blur-1] -------------------------
+[test_neon_blur-1] ===================
+[test_neon_blur-1] image name :config/tof_images/frame1_4.png
+[test_neon_blur-1] hobotcv cost time:1238
+[test_neon_blur-1] opencv cost time:3530
+[test_neon_blur-1] hobotcv save rate:0.649292
+[test_neon_blur-1]
+[test_neon_blur-1] analyse_result start
+[test_neon_blur-1] ---------Gaussian_mean_Blur
+[test_neon_blur-1] out_filter type:2,cols:320,rows:240,channel:1
+[test_neon_blur-1] cls_filter type:2,cols:320,rows:240,channel:1
+[test_neon_blur-1] out_filter minvalue:97,max:2365
+[test_neon_blur-1] out_filter min,x:319,y:113
+[test_neon_blur-1] out_filter max,x:158,y:236
+[test_neon_blur-1] cls_filter minvalue:97,max:2365
+[test_neon_blur-1] cls_filter min,x:318,y:114
+[test_neon_blur-1] cls_filter max,x:158,y:236
+[test_neon_blur-1]
+[test_neon_blur-1] diff diff diff
+[test_neon_blur-1] mat_diff minvalue:0,max:1
+[test_neon_blur-1] mat_diff min,x:1,y:0
+[test_neon_blur-1] mat_diff max,x:0,y:0
+[test_neon_blur-1]
+[test_neon_blur-1] error sum:2.63925e+06,max:1,mean_error:0.134766
+[test_neon_blur-1] analyse_result,time_used_ms_end:2
+[test_neon_blur-1] analyse_result end
+[test_neon_blur-1]
+[test_neon_blur-1] -------------------------
+```
+
+hobotcv cost time:1238 //hobotcv neon加速接口耗时1238微秒。
+opencv cost time:3530　//表示opencv的高斯滤波耗时3530微秒．
+hobotcv save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.649292
+
+从以上比较结果，经过hobotcv加速后性能提升64%。
+
+error sum:2.63925e+06,max:1,mean_error:0.134766　//单张图片总误差是：2.63925e+06，单个像素最大误差是：1，平均误差：0.134766
+
+平均误差　＝　sum / (width x height) = 2.63925e+06 / (320 x 240)

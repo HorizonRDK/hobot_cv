@@ -21,6 +21,7 @@
 #include <sys/types.h>
 
 #include <cstring>
+#include <fstream>
 #include <iostream>
 
 #include "rclcpp/rclcpp.hpp"
