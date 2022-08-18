@@ -52,18 +52,17 @@ class hobotcv_front {
   int getPyramidOutputImage(OutputPyramid *output);
 
  private:
-  int createGroup(int group_id = -1);
+  int createGroup();
   int setChannelAttr(int enscale);
   int setChannelRotate();
   int setChannelPyramidAttr();
   int group_sem_wait();
   int group_sem_post();
   //初始化channel后才支持channel的动态设置
-  int groupChn0Init(int group_id, int max_w, int max_h);
-  int groupChn1Init(int group_id, int max_w, int max_h);
-  int groupChn2Init(int group_id, int max_w, int max_h);
-  int groupChn5Init(int group_id, int max_w, int max_h);
-  int groupPymChnInit(int group_id, int max_w, int max_h);
+  int groupChn1Init(int group_id, int max_w, int max_h);    // pym channel
+  int groupChn2Init(int group_id, int max_w, int max_h);    // down scale Init
+  int groupChn5Init(int group_id, int max_w, int max_h);    // up scale init
+  int groupPymChnInit(int group_id, int max_w, int max_h);  // pyramid init
 
   int copyOutputImage(int stride,
                       int width,

@@ -62,7 +62,7 @@ hobot_cv高斯模糊接口，目前只支持bpu计算加速，且输入为320x24
 
 ## 注意事项
   目前hobot_cv crop&resize&rotate只支持nv12格式。
-  vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与创建该group的进程绑定使用，hobot_cv默认使用group4，group5，group6和group7这四个group，所以hobot_cv最多支持四个进程同时使用vps加速。
+  vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与创建该group的进程绑定使用，并只在此进程内使用，进程结束，group自动释放。hobot_cv默认使用group4，group5，group6和group7这四个group，所以hobot_cv最多支持四个不同输入属性同时使用vps加速。
   VPS加速，输入输出图片最大4096*2160，最小32*32。最大支持1.5倍放大，1/8缩小。宽度需为16的倍数，高度需为偶数。
   BPU加速，缩放范围是dst/src取值[1/185,256), 输入宽度为[16,4080], 宽度需为16的倍数。输出尺寸要求w<=4080,h<=4080。
   crop功能，crop区域必须在原图像内部。

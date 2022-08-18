@@ -14,7 +14,6 @@
 #ifndef HOBOTCV_NEON_BLUR_HPP_
 #define HOBOTCV_NEON_BLUR_HPP_
 
-#include "oal_gaussion.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 

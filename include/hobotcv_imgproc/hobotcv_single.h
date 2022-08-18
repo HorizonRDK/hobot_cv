@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "dnn/hb_dnn.h"
 #include "hobotcv_imgproc/hobotcv_imgproc.h"
@@ -48,18 +49,18 @@ typedef struct HOBOT_CV_CHANNEL_INFO {
   int output_w;
   int output_h;
   int rotation;
-  int pym_enable;  //是否设置为pym
+  int pym_enable;  //是否设置为pym 0:未设置 1：设置
 } Channel_info_t;
 
 typedef struct HOBOT_CV_GROUP_INFO {
-  int group_id;
-  int process_id;   // 每个进程绑定一个固定group
-  int group_state;  // group状态，是否已经被系统释放
+  int group_id;  // group id
+  int process_id;  // group绑定的进程id，每个group限定在一个固定进程内使用
+  int group_state;  // group状态，是否已经被系统释放, 0:未被系统释放
+                    // 1：已被系统释放
   uint64_t active_time;
   int max_w;
   int max_h;
   Channel_info_t channels[7];
-  int pym_channel;  //设置为pym的chn num
 } Group_info_t;
 
 typedef struct HOBOT_CV_SHM_FIFO {
@@ -89,12 +90,15 @@ class hobotcv_single {
  public:
   ~hobotcv_single() {
     sem_wait(fifo.sem_groups);
-    if (group_id >= HOBOTCV_GROUP_BEGIN) {
-      Group_info_t *group =
-          (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
-      group->group_state = 1;
-      group->process_id = 0;
-      memset(group->channels, 0, sizeof(Channel_info_t) * 7);
+    for (size_t i = 0; i < vec_group.size(); ++i) {
+      int group_id = vec_group[i];
+      if (group_id >= HOBOTCV_GROUP_BEGIN) {
+        Group_info_t *group =
+            (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
+        group->group_state = 1;
+        group->process_id = 0;
+        memset(group->channels, 0, sizeof(Channel_info_t) * 7);
+      }
     }
     sem_post(fifo.sem_groups);
     sem_close(fifo.sem_groups);
@@ -114,7 +118,7 @@ class hobotcv_single {
   }
 
   shmfifo_t fifo;
-  int group_id;
+  std::vector<int> vec_group;
 
  private:
   int shmfifoInit();

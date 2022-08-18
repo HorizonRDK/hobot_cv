@@ -39,18 +39,17 @@ find_package(rclcpp REQUIRED)
 include_directories(include
 ${PROJECT_SOURCE_DIR}
 ${CMAKE_SYSROOT}/usr/include/opencv/
-library/
 )
 
 link_directories(
   ${CMAKE_SYSROOT}/usr/lib/hbbpu/
   ${CMAKE_SYSROOT}/usr/lib/hbmedia/
-  library/
+  library/build/
 )
 
 SET(LINK_LIBS dnn opencv_world)
 SET(VPS_LIBS isp_algo z hbmedia isp ion multimedia iar tinyalsa cjson diag gdcbin vio dl)
-SET(NEON_LIBS oal-gaussion)
+SET(NEON_LIBS hobot_neon_gaussion)
 
 add_library(${PROJECT_NAME} SHARED
 src/utils.cpp
@@ -58,8 +57,7 @@ src/hobotcv_imgproc/hobotcv_imgproc.cpp
 src/hobotcv_imgproc/hobotcv_front.cpp
 src/hobotcv_imgproc/hobotcv_single.cpp
 src/hobotcv_gaussian_blur.cpp
-src/hobotcv_gaussian_blur_imp.cpp
-src/hobotcv_neon_blur.cpp)
+src/hobotcv_gaussian_blur_imp.cpp)
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
 
 add_executable(example test/test_crop_resize_rotate.cpp)
@@ -119,12 +117,13 @@ install(
   FILES include/hobotcv_imgproc/hobotcv_imgproc.h
   FILES include/hobotcv_gaussian_blur.h
   FILES include/hobotcv_gaussian_blur_imp.hpp
+  FILES include/hobotcv_neon_blur.h
   DESTINATION include/${PROJECT_NAME}/
 )
 
 # Install library
 install(FILES
-${CMAKE_CURRENT_SOURCE_DIR}/library/liboal-gaussion.so
+${CMAKE_CURRENT_SOURCE_DIR}/library/build/libhobot_neon_gaussion.so
 DESTINATION lib/)
 
 # Install executables

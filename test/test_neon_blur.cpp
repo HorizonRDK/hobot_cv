@@ -91,8 +91,22 @@ int main() {
     cv::Mat src = cv::imread(m_tof_file_s, CV_16UC1);
     cv::Mat dst_mat, hobotcv_output_mat, opencv_output_mat;
     auto start_time_infe = std::chrono::steady_clock::now();
-    hobot_cv::HobotGaussianBlur(src, dst_mat, cv::Size(3, 3));
-    hobot_cv::HobotMeanBlur(dst_mat, hobotcv_output_mat, cv::Size(3, 3));
+    auto ret = hobot_cv::HobotGaussianBlur(src, dst_mat, cv::Size(3, 3));
+    if (ret == -2) {
+      RCLCPP_ERROR(rclcpp::get_logger("neon_example"),
+                   "Please run on the X3 platform!");
+      continue;
+    } else if (ret < 0) {
+      RCLCPP_ERROR(rclcpp::get_logger("neon_example"),
+                   "Hobotcv GaussianBlur failed!");
+      continue;
+    }
+    ret = hobot_cv::HobotMeanBlur(dst_mat, hobotcv_output_mat, cv::Size(3, 3));
+    if (ret < 0) {
+      RCLCPP_ERROR(rclcpp::get_logger("neon_example"),
+                   "Hobotcv MeanBlur failed!");
+      continue;
+    }
     int infe_time = std::chrono::duration_cast<std::chrono::microseconds>(
                         std::chrono::steady_clock::now() - start_time_infe)
                         .count();
