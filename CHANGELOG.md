@@ -1,5 +1,10 @@
 # Changelog for package hobot_cv
 
+hhp_1.0.5 (2022-8-19)
+------------------
+1. hobotcv集成neon加速
+2. 修复问题ROBOT-64
+
 hhp_1.0.4 (2022-08-03)
 ------------------
 1. 删除hobotcv_service进程
