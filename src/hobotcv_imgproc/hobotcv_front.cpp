@@ -15,6 +15,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <fstream>
@@ -208,22 +209,27 @@ int hobotcv_front::groupScheduler() {
         if (pym_param.pymEnable == 1) {  //本次操作为pyramid
           int pym_channel = 2;
           if (src_w > 2048 || src_h > 1080) {
+            // pym输入分辨率大于2048x1080，pym选择通道2
             pym_channel = 2;
-          } else {
+          } else {  // pym输入分辨率小于2048x1080，channel 1 即可满足需求
             pym_channel = 1;
           }
-          if (group->channels[2].pym_enable == 1) {
+          if (group->channels[2].pym_enable == 1) {  //通道2已经被设置为pym通道
             have_same_group = true;
-          } else if (group->channels[1].pym_enable == 1) {
+          } else if (group->channels[1].pym_enable ==
+                     1) {  //通道1已经被设置为pym通道
             if (pym_channel == 1) {
               have_same_group = true;
             }
           }
         } else {
-          if (dst_w > src_w || dst_h > src_h) {  // up scale
+          if (dst_w > src_w || dst_h > src_h) {
+            // up scale 默认使用通道5
             have_same_group = true;
-          } else {  // down scale
+          } else {
+            // down scale 使用通道2
             if (group->channels[2].pym_enable == 0) {
+              //通道2未被设置为pym通道，可用
               have_same_group = true;
             }
           }
@@ -243,11 +249,15 @@ int hobotcv_front::groupScheduler() {
       return -1;
     }
   }
-  group_sem_wait();
+  auto ret = group_sem_wait();
+  if (ret != 0) {
+    sem_post(observe->fifo.sem_groups);
+    return -1;
+  }
 
   setVpsChannelAttr();  //设置vps通道属性
 
-  int ret = HB_VPS_EnableChn(group_id, channel_id);
+  ret = HB_VPS_EnableChn(group_id, channel_id);
   if (0 != ret) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
                  "%d EnableChn: %d failed ret: %d!!",
@@ -264,7 +274,7 @@ int hobotcv_front::groupScheduler() {
 
 int hobotcv_front::setVpsChannelAttr() {
   int enScale = 1;
-  if (pym_param.pymEnable == 1) {
+  if (pym_param.pymEnable == 1) {  //本次操作为pym操作，设置pym通道输出大小
     setChannelPyramidAttr();
   } else {
     if (dst_w > src_w || dst_h > src_h) {  // up scale
@@ -311,7 +321,6 @@ int hobotcv_front::createGroup() {
       group->active_time = currentMicroseconds();
       group->process_id = processId;
       group->group_state = 0;
-      // group->pym_channel = -1;
       group_id = groupId;
       break;
     } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
@@ -332,6 +341,7 @@ int hobotcv_front::createGroup() {
   }
 
   if (-1 == group_id) {
+    //未找到空闲group
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hobot_cv group is full !!");
     return -1;
   }
@@ -400,8 +410,9 @@ int hobotcv_front::setChannelRotate() {
 
 int hobotcv_front::setChannelPyramidAttr() {
   if (src_w > 2048 || src_h > 1080) {
+    // pym输入分辨率大于2048x1080，需要将channel2设置为pym通道
     channel_id = 2;
-  } else {
+  } else {  // pym输入分辨率小于2048x1080，channel 1 即可满足需求
     channel_id = 1;
   }
   VPS_PYM_CHN_ATTR_S pym_chn_attr;
@@ -570,15 +581,25 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
 }
 
 int hobotcv_front::group_sem_wait() {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  ts.tv_sec += 2;  // 超时2秒
+
+  int ret = 0;
   if (4 == group_id) {
-    sem_wait(observe->fifo.sem_group4);
+    ret = sem_timedwait(observe->fifo.sem_group4, &ts);
   } else if (5 == group_id) {
-    sem_wait(observe->fifo.sem_group5);
+    ret = sem_timedwait(observe->fifo.sem_group5, &ts);
   } else if (6 == group_id) {
-    sem_wait(observe->fifo.sem_group6);
+    ret = sem_timedwait(observe->fifo.sem_group6, &ts);
   } else if (7 == group_id) {
-    sem_wait(observe->fifo.sem_group7);
+    ret = sem_timedwait(observe->fifo.sem_group7, &ts);
   } else {
+    return -1;
+  }
+  if (ret != 0) {  //等待超时
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "group: %d waite time out ", group_id);
     return -1;
   }
   return 0;

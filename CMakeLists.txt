@@ -91,15 +91,8 @@ target_link_libraries(pyramid_example
   ${PROJECT_NAME}
   ${VPS_LIBS})
 
-add_executable(neon_gaussian_example test/test_neon_gaussian_blur.cpp)
-target_link_libraries(neon_gaussian_example
-  ${LINK_LIBS}
-  ${PROJECT_NAME}
-  ${VPS_LIBS}
-  ${NEON_LIBS})
-
-add_executable(neon_mean_example test/test_neon_mean_blur.cpp)
-target_link_libraries(neon_mean_example
+add_executable(neon_example test/test_neon_blur.cpp)
+target_link_libraries(neon_example
   ${LINK_LIBS}
   ${PROJECT_NAME}
   ${VPS_LIBS}
@@ -135,7 +128,7 @@ DESTINATION lib/)
 
 # Install executables
 install(
-  TARGETS example crop_example resize_example rotate_example pyramid_example test_gaussian_blur neon_gaussian_example neon_mean_example
+  TARGETS example crop_example resize_example rotate_example pyramid_example test_gaussian_blur neon_example
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

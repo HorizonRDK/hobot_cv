@@ -212,7 +212,7 @@ int HobotCVGaussianBlurDestroy( HobotCVGaussianBlurHandle *phandle);
 
 int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 功能介绍：高斯滤波neon加速处理。
-返回值：0表示成功，<0表示失败。
+返回值：0表示成功，-2表示非x3平台运行，-1表示参数错误。
 参数：
 | 参数名  | 解释                         |
 | ------- | ---------------------------- |
@@ -224,7 +224,7 @@ int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 
 int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 功能介绍：均值滤波neon加速处理。
-返回值：0表示成功，<0表示失败。
+返回值：0表示成功，-2表示非x3平台运行，-1表示参数错误。
 参数：
 | 参数名  | 解释                         |
 | ------- | ---------------------------- |
@@ -251,13 +251,10 @@ ros2 launch hobot_cv hobot_cv_crop_resize_rotate_pyramid.launch.py
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
 ros2 launch hobot_cv hobot_cv_gaussian_blur.launch.py
 
-# 启动neon_gaussian_example launch文件
-使用本地tof格式图片通过hobot_cv接口时实现图片的高斯滤波，采用neon加速
-ros2 launch hobot_cv hobot_cv_neon_gaussian_blur.launch.py
+# 启动neon_example launch文件
+使用本地tof格式图片通过hobot_cv接口时实现图片的高斯滤波与均值滤波，采用neon加速
+ros2 launch hobot_cv hobot_cv_neon_blur.launch.py
 
-# 启动neon_mean_example launch文件
-使用本地tof格式图片通过hobot_cv接口时实现图片的均值滤波，采用neon加速
-ros2 launch hobot_cv hobot_cv_neon_mean_blur.launch.py
 ```
 
 ## X3 yocto系统上运行
@@ -273,16 +270,13 @@ cp -r install/lib/hobot_cv/config/ .
 ./install/lib/hobot_cv/example
 
 # 运行模式2：
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
+使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波，采用bou加速。
 ros2 run hobot_cv test_gaussian_blur
 
 # 运行模式3：
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波，采用neon加速。
-ros2 run hobot_cv neon_gaussian_example
+使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波与均值滤波，采用neon加速。
+ros2 run hobot_cv neon_example
 
-# 运行模式4：
-使用本地tof格式图片通过hobot_cv接口实现图片的均值滤波，采用neon加速。
-ros2 run hobot_cv neon_mean_example
 ```
 
 # 结果分析
@@ -409,88 +403,42 @@ error sum:8.46524e+06,max:2,mean_error:0.439232　//单张图片总误差是：8
 
 平均误差　＝　sum / (width * height) = 8.46524e+06 / (320 * 240)
 
-### 高斯滤波neon加速
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波，采用neon加速。
+### 高斯滤波与均值滤波neon加速
+使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波和均值滤波，log输出为neon加速与opencv处理效率对比。
 ```
-[neon_gaussian_example-1] -------------------------
-[neon_gaussian_example-1] ===================
-[neon_gaussian_example-1] image name :config/tof_images/frame1_4.png
-[neon_gaussian_example-1] hobotcv cost time:709
-[neon_gaussian_example-1] opencv cost time:2707
-[neon_gaussian_example-1] hobotcv save rate:0.738086
-[neon_gaussian_example-1]
-[neon_gaussian_example-1] analyse_result start
-[neon_gaussian_example-1] ---------Gaussian_Blur
-[neon_gaussian_example-1] out_filter type:2,cols:320,rows:240,channel:1
-[neon_gaussian_example-1] cls_filter type:2,cols:320,rows:240,channel:1
-[neon_gaussian_example-1] out_filter minvalue:96,max:2740
-[neon_gaussian_example-1] out_filter min,x:319,y:115
-[neon_gaussian_example-1] out_filter max,x:155,y:103
-[neon_gaussian_example-1] cls_filter minvalue:96,max:2741
-[neon_gaussian_example-1] cls_filter min,x:319,y:115
-[neon_gaussian_example-1] cls_filter max,x:155,y:103
-[neon_gaussian_example-1]
-[neon_gaussian_example-1] diff diff diff
-[neon_gaussian_example-1] mat_diff minvalue:0,max:1
-[neon_gaussian_example-1] mat_diff min,x:3,y:0
-[neon_gaussian_example-1] mat_diff max,x:0,y:0
-[neon_gaussian_example-1]
-[neon_gaussian_example-1] error sum:9.13206e+06,max:1,mean_error:0.466302
-[neon_gaussian_example-1] analyse_result,time_used_ms_end:2
-[neon_gaussian_example-1] analyse_result end
-[neon_gaussian_example-1]
-[neon_gaussian_example-1] -------------------------
-[INFO] [neon_gaussian_example-1]: process has finished cleanly [pid 6325]
+[neon_example-1] ===================
+[neon_example-1] image name :config/tof_images/frame1_4.png
+[neon_example-1] hobotcv mean cost time:674
+[neon_example-1] opencv mean cost time:1025
+[neon_example-1] hobotcv mean save rate:0.342439
+[neon_example-1]
+[neon_example-1] analyse_result start
+[neon_example-1] ---------Mean_Blur
+[neon_example-1] error sum:8.43744e+06,max:1,mean_error:0.430833
+[neon_example-1]
+[neon_example-1] hobotcv gaussian cost time:603
+[neon_example-1] opencv gaussian cost time:2545
+[neon_example-1] hobotcv gaussian save rate:0.763065
+[neon_example-1]
+[neon_example-1] analyse_result start
+[neon_example-1] ---------Gaussian_Blur
+[neon_example-1] error sum:9.13206e+06,max:1,mean_error:0.466302
+[neon_example-1]
+[neon_example-1] -------------------------
 ```
 
-hobotcv cost time:709 //hobotcv neon加速接口耗时709微秒。
-opencv cost time:2707　//表示opencv的高斯滤波耗时2707微秒。
-hobotcv save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.738086
+hobotcv mean cost time:674 //hobotcv 均值滤波neon加速接口耗时674微秒。
+opencv mean cost time:1025 //表示opencv的均值滤波耗时1025微秒。
+hobotcv mean save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.342439
 
-从以上比较结果，经过hobotcv加速后性能提升73%。
+hobotcv mean cost time:603 //hobotcv 均值滤波neon加速接口耗时674微秒。
+opencv mean cost time:2545 //表示opencv的均值滤波耗时2545微秒。
+hobotcv mean save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.763065
 
-error sum:9.13206e+06,max:1,mean_error:0.466302　//单张图片总误差是：9.13206e+06，单个像素最大误差是：1，平均误差：0.466302
+从以上比较结果，经过hobotcv加速后均值滤波性能提升34%，高斯滤波性能提升76%。
 
-平均误差　＝　sum / (width x height) = 9.13206e+06 / (320 x 240)
+error sum:8.43744e+06,max:1,mean_error:0.430833　//均值滤波单张图片总误差是：8.43744e+06，单个像素最大误差是：1，平均误差：0.430833
+均值滤波平均误差　＝　sum / (width x height) = 8.43744e+06 / (320 x 240)
 
-### 均值滤波neon加速
-使用本地tof格式图片通过hobot_cv接口实现图片的均值滤波，采用neon加速。
-```
-[neon_mean_example-1] -------------------------
-[neon_mean_example-1] ===================
-[neon_mean_example-1] image name :config/tof_images/frame1_4.png
-[neon_mean_example-1] hobotcv cost time:706
-[neon_mean_example-1] opencv cost time:965
-[neon_mean_example-1] hobotcv save rate:0.268394
-[neon_mean_example-1]
-[neon_mean_example-1] analyse_result start
-[neon_mean_example-1] ---------Mean_Blur
-[neon_mean_example-1] out_filter type:2,cols:320,rows:240,channel:1
-[neon_mean_example-1] cls_filter type:2,cols:320,rows:240,channel:1
-[neon_mean_example-1] out_filter minvalue:97,max:2614
-[neon_mean_example-1] out_filter min,x:319,y:114
-[neon_mean_example-1] out_filter max,x:155,y:103
-[neon_mean_example-1] cls_filter minvalue:97,max:2614
-[neon_mean_example-1] cls_filter min,x:319,y:113
-[neon_mean_example-1] cls_filter max,x:155,y:103
-[neon_mean_example-1]
-[neon_mean_example-1] diff diff diff
-[neon_mean_example-1] mat_diff minvalue:0,max:1
-[neon_mean_example-1] mat_diff min,x:4,y:0
-[neon_mean_example-1] mat_diff max,x:0,y:0
-[neon_mean_example-1]
-[neon_mean_example-1] error sum:8.43744e+06,max:1,mean_error:0.430833
-[neon_mean_example-1] analyse_result,time_used_ms_end:2
-[neon_mean_example-1] analyse_result end
-[neon_mean_example-1]
-[neon_mean_example-1] -------------------------
-```
-hobotcv cost time:706 //hobotcv neon加速接口耗时706微秒。
-opencv cost time:965  //表示opencv的高斯滤波耗时965微秒。
-hobotcv save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.268394
-
-从以上比较结果，经过hobotcv加速后性能提升26%。
-
-error sum:8.43744e+06,max:1,mean_error:0.430833　//单张图片总误差是：8.43744e+06，单个像素最大误差是：1，平均误差：0.430833
-
-平均误差　＝　sum / (width x height) = 8.43744e+06 / (320 x 240)
+error sum:9.13206e+06,max:1,mean_error:0.466302　//高斯滤波单张图片总误差是：9.13206e+06，单个像素最大误差是：1，平均误差：0.466302
+高斯滤波平均误差　＝　sum / (width x height) = 9.13206e+06 / (320 x 240)
