@@ -85,26 +85,20 @@ int main() {
   for (int i = 0; i < 5; i++) {
     std::string m_tof_file_s =
         "config/tof_images/frame1_" + std::to_string(i) + ".png";
-
     std::cout << "===================" << std::endl;
     std::cout << "image name :" << m_tof_file_s << std::endl;
     cv::Mat src = cv::imread(m_tof_file_s, CV_16UC1);
-    cv::Mat dst_mat, hobotcv_output_mat, opencv_output_mat;
+    cv::Mat hobotcv_output_mat, opencv_output_mat;
     auto start_time_infe = std::chrono::steady_clock::now();
-    auto ret = hobot_cv::HobotGaussianBlur(src, dst_mat, cv::Size(3, 3));
+    auto ret =
+        hobot_cv::HobotGaussianBlur(src, hobotcv_output_mat, cv::Size(3, 3));
     if (ret == -2) {
-      RCLCPP_ERROR(rclcpp::get_logger("neon_example"),
+      RCLCPP_ERROR(rclcpp::get_logger("neon_gaussian"),
                    "Please run on the X3 platform!");
       continue;
     } else if (ret < 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("neon_example"),
+      RCLCPP_ERROR(rclcpp::get_logger("neon_gaussian"),
                    "Hobotcv GaussianBlur failed!");
-      continue;
-    }
-    ret = hobot_cv::HobotMeanBlur(dst_mat, hobotcv_output_mat, cv::Size(3, 3));
-    if (ret < 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("neon_example"),
-                   "Hobotcv MeanBlur failed!");
       continue;
     }
     int infe_time = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -113,9 +107,7 @@ int main() {
     std::cout << "hobotcv cost time:" << infe_time << std::endl;
 
     auto start_time_gauss = std::chrono::steady_clock::now();
-    cv::Mat gaussian_tof;
-    cv::GaussianBlur(src, gaussian_tof, cv::Size(3, 3), 0, 0);
-    cv::blur(gaussian_tof, opencv_output_mat, cv::Size(3, 3));
+    cv::GaussianBlur(src, opencv_output_mat, cv::Size(3, 3), 0, 0);
     int guss_time = std::chrono::duration_cast<std::chrono::microseconds>(
                         std::chrono::steady_clock::now() - start_time_gauss)
                         .count();
@@ -123,7 +115,7 @@ int main() {
     float save_rate =
         static_cast<float>((guss_time * 1.0 - infe_time * 1.0) / guss_time);
     std::cout << "hobotcv save rate:" << save_rate << std::endl;
-    analyse_result(hobotcv_output_mat, opencv_output_mat, "Gaussian_mean_Blur");
+    analyse_result(hobotcv_output_mat, opencv_output_mat, "Gaussian_Blur");
     std::cout << "-------------------------" << std::endl;
   }
 

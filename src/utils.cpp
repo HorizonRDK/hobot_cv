@@ -14,11 +14,10 @@
 
 #include "include/utils.h"
 
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iostream>
-
-#include "rclcpp/rclcpp.hpp"
 
 void prepare_nv12_tensor_without_padding(uint8_t *image_data,
                                          int image_height,

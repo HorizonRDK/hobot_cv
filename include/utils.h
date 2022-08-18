@@ -17,7 +17,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "dnn/hb_dnn.h"
 #include "opencv2/core/mat.hpp"

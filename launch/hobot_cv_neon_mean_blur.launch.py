@@ -19,7 +19,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
               package='hobot_cv',
-              executable='test_neon_blur',
+              executable='neon_mean_example',
               output='screen',
               parameters=[],
               arguments=['--ros-args', '--log-level', 'info']
