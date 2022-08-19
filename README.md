@@ -431,9 +431,9 @@ hobotcv mean cost time:674 //hobotcv 均值滤波neon加速接口耗时674微秒
 opencv mean cost time:1025 //表示opencv的均值滤波耗时1025微秒。
 hobotcv mean save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.342439
 
-hobotcv mean cost time:603 //hobotcv 均值滤波neon加速接口耗时674微秒。
-opencv mean cost time:2545 //表示opencv的均值滤波耗时2545微秒。
-hobotcv mean save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.763065
+hobotcv gaussian cost time:603 //hobotcv 高斯滤波neon加速接口耗时674微秒。
+opencv gaussian cost time:2545 //表示opencv的高斯滤波耗时2545微秒。
+hobotcv gaussian save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.763065
 
 从以上比较结果，经过hobotcv加速后均值滤波性能提升34%，高斯滤波性能提升76%。
 
