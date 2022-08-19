@@ -39,13 +39,13 @@ find_package(rclcpp REQUIRED)
 include_directories(include
 ${PROJECT_SOURCE_DIR}
 ${CMAKE_SYSROOT}/usr/include/opencv/
-library/include/
+thirdparty/include/
 )
 
 link_directories(
   ${CMAKE_SYSROOT}/usr/lib/hbbpu/
   ${CMAKE_SYSROOT}/usr/lib/hbmedia/
-  library/build/
+  thirdparty/lib/
 )
 
 SET(LINK_LIBS dnn opencv_world)
@@ -118,13 +118,13 @@ install(
   FILES include/hobotcv_imgproc/hobotcv_imgproc.h
   FILES include/hobotcv_gaussian_blur.h
   FILES include/hobotcv_gaussian_blur_imp.hpp
-  FILES library/include/hobotcv_neon_blur.h
+  FILES thirdparty/include/hobotcv_neon_blur.h
   DESTINATION include/${PROJECT_NAME}/
 )
 
 # Install library
 install(FILES
-${CMAKE_CURRENT_SOURCE_DIR}/library/build/libhobotcv_neon_blur.so
+${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/lib/libhobotcv_neon_blur.so
 DESTINATION lib/)
 
 # Install executables
