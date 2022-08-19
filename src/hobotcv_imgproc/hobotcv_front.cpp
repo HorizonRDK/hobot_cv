@@ -15,6 +15,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <fstream>
@@ -22,7 +23,6 @@
 #include <sstream>
 #include <string>
 
-#include "rclcpp/rclcpp.hpp"
 #include "utils.h"
 
 namespace hobot_cv {
@@ -35,77 +35,10 @@ hobotcv_front::hobotcv_front() {
   roi.width = 0;
   roi.height = 0;
   pym_param.pymEnable = 0;
+  observe = hobotcv_single::getSingleObj();
 }
 
 hobotcv_front::~hobotcv_front() {}
-
-int hobotcv_front::shmfifoInit() {
-  memset(&fifo, 0, sizeof(shmfifo_t));
-  // Init sem
-  //创建共享内存互斥信号
-  sem_t *shm_sem = sem_open("/sem_shm", O_CREAT, 0666, 1);
-  sem_wait(shm_sem);
-  int shmid = shmget((key_t)1234, 0, 0);
-  if (shmid < 0) {
-    size_t size = sizeof(Group_info_t) * HOBOTCV_GROUP_SIZE;
-    //创建新的共享内存区,返回共享内存标识符
-    fifo.shmid = shmget((key_t)1234, size, IPC_CREAT | 0666);
-    if (fifo.shmid == -1) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmget failed!!");
-      sem_post(shm_sem);
-      sem_close(shm_sem);
-      return -1;
-    }
-
-    fifo.groups = shmat(fifo.shmid, NULL, 0);
-    if (fifo.groups == (void *)-1) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
-      sem_post(shm_sem);
-      sem_close(shm_sem);
-      return -1;
-    }
-    memset(fifo.groups, 0, sizeof(Group_info_t) * HOBOTCV_GROUP_SIZE);
-
-    //创建信号量
-    fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT, 0666, 1);
-    fifo.sem_group4 = sem_open("/sem_group4", O_CREAT, 0666, 1);
-    fifo.sem_group5 = sem_open("/sem_group5", O_CREAT, 0666, 1);
-    fifo.sem_group6 = sem_open("/sem_group6", O_CREAT, 0666, 1);
-    fifo.sem_group7 = sem_open("/sem_group7", O_CREAT, 0666, 1);
-
-    // init vp
-    VP_CONFIG_S struVpConf;
-    memset(&struVpConf, 0x00, sizeof(VP_CONFIG_S));
-    struVpConf.u32MaxPoolCnt = 32;
-    HB_VP_SetConfig(&struVpConf);
-    int ret = HB_VP_Init();
-    if (0 != ret) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed!!");
-      sem_post(shm_sem);
-      sem_close(shm_sem);
-      return -1;
-    }
-  } else {
-    fifo.shmid = shmid;
-    //连接 shm
-    fifo.groups = shmat(fifo.shmid, NULL, 0);
-    if (fifo.groups == (void *)-1) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "shmfifo shmat failed!!");
-      sem_post(shm_sem);
-      sem_close(shm_sem);
-      return -1;
-    }
-    //打开信号量
-    fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT);
-    fifo.sem_group4 = sem_open("/sem_group4", O_CREAT);
-    fifo.sem_group5 = sem_open("/sem_group5", O_CREAT);
-    fifo.sem_group6 = sem_open("/sem_group6", O_CREAT);
-    fifo.sem_group7 = sem_open("/sem_group7", O_CREAT);
-  }
-  sem_post(shm_sem);
-  sem_close(shm_sem);
-  return 0;
-}
 
 int hobotcv_front::prepareResizeParam(int src_width,
                                       int src_height,
@@ -264,92 +197,96 @@ int hobotcv_front::groupScheduler() {
   //选取crop区域的宽高作为输入源宽高
   src_h = roi.cropEnable == 1 ? roi.height : src_h;
   src_w = roi.cropEnable == 1 ? roi.width : src_w;
-  sem_wait(fifo.sem_groups);
-  bool have_same_process = false;
+  sem_wait(observe->fifo.sem_groups);
+  bool have_same_group = false;
   for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
-    Group_info_t *group = (Group_info_t *)(fifo.groups) + i;
+    Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + i;
+    if (group->group_state == 1) {  //已经被系统释放
+      continue;
+    }
     if (group->process_id == processId) {
       if (group->max_h == src_h && src_w == group->max_w) {
-        have_same_process = true;
-        group_id = i + HOBOTCV_GROUP_BEGIN;
-        group->active_time = currentMicroseconds();
-      } else {  // group 输入源不同，重新创建group
-        group->active_time = 1;
+        if (pym_param.pymEnable == 1) {  //本次操作为pyramid
+          int pym_channel = 2;
+          if (src_w > 2048 || src_h > 1080) {
+            // pym输入分辨率大于2048x1080，pym选择通道2
+            pym_channel = 2;
+          } else {  // pym输入分辨率小于2048x1080，channel 1 即可满足需求
+            pym_channel = 1;
+          }
+          if (group->channels[2].pym_enable == 1) {  //通道2已经被设置为pym通道
+            have_same_group = true;
+          } else if (group->channels[1].pym_enable ==
+                     1) {  //通道1已经被设置为pym通道
+            if (pym_channel == 1) {
+              have_same_group = true;
+            }
+          }
+        } else {
+          if (dst_w > src_w || dst_h > src_h) {
+            // up scale 默认使用通道5
+            have_same_group = true;
+          } else {
+            // down scale 使用通道2
+            if (group->channels[2].pym_enable == 0) {
+              //通道2未被设置为pym通道，可用
+              have_same_group = true;
+            }
+          }
+        }
+        if (have_same_group) {
+          group_id = i + HOBOTCV_GROUP_BEGIN;
+          group->active_time = currentMicroseconds();
+          break;
+        }
       }
-      break;
     }
   }
-  if (!have_same_process) {
+  if (!have_same_group) {
     auto ret = createGroup();
     if (ret != 0) {
-      sem_post(fifo.sem_groups);
+      sem_post(observe->fifo.sem_groups);
       return -1;
     }
   }
-  group_sem_wait();
+  auto ret = group_sem_wait();
+  if (ret != 0) {
+    sem_post(observe->fifo.sem_groups);
+    return -1;
+  }
 
   setVpsChannelAttr();  //设置vps通道属性
 
-  int ret = HB_VPS_EnableChn(group_id, channel_id);
+  ret = HB_VPS_EnableChn(group_id, channel_id);
   if (0 != ret) {
-    if (ret == -268696580) {  //进程退出导致group资源被系统回收，重新创建group
-      Group_info_t *group =
-          (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
-      group->active_time = 1;
-      ret = createGroup();
-      if (ret != 0) {
-        group_sem_post();
-        sem_post(fifo.sem_groups);
-        return -1;
-      }
-      setVpsChannelAttr();  //设置vps通道属性
-      ret = HB_VPS_EnableChn(group_id, channel_id);
-      if (ret != 0) {
-        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                     "%d EnableChn: %d failed ret: %d!!",
-                     group_id,
-                     channel_id,
-                     ret);
-        group_sem_post();
-        sem_post(fifo.sem_groups);
-        return -1;
-      }
-    } else {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                   "%d EnableChn: %d failed ret: %d!!",
-                   group_id,
-                   channel_id,
-                   ret);
-    }
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "%d EnableChn: %d failed ret: %d!!",
+                 group_id,
+                 channel_id,
+                 ret);
     group_sem_post();
-    sem_post(fifo.sem_groups);
+    sem_post(observe->fifo.sem_groups);
     return -1;
   }
-  sem_post(fifo.sem_groups);
+  sem_post(observe->fifo.sem_groups);
   return 0;
 }
 
 int hobotcv_front::setVpsChannelAttr() {
   int enScale = 1;
-  if (pym_param.pymEnable == 1) {
+  if (pym_param.pymEnable == 1) {  //本次操作为pym操作，设置pym通道输出大小
     setChannelPyramidAttr();
   } else {
     if (dst_w > src_w || dst_h > src_h) {  // up scale
       channel_id = 5;
     } else {  // down scale
-      if (dst_w > 2048 || dst_h > 1080) {
-        channel_id = 2;
-      } else if ((dst_w <= 2048 && dst_w > 1280) || dst_h > 720) {
-        channel_id = 1;
-      } else if (dst_w <= 1280 && dst_h <= 720) {
-        channel_id = 0;
-      }
+      channel_id = 2;
     }
     if (dst_w == src_w || dst_h == src_h) {
       enScale = 0;
     }
     int group_index = group_id - HOBOTCV_GROUP_BEGIN;
-    Group_info_t *group = (Group_info_t *)(fifo.groups) + group_index;
+    Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + group_index;
     if (group->channels[channel_id].output_w != dst_w ||
         group->channels[channel_id].output_h != dst_h) {
       setChannelAttr(enScale);
@@ -366,7 +303,7 @@ int hobotcv_front::setVpsChannelAttr() {
 int hobotcv_front::createGroup() {
   auto now_time = currentMicroseconds();
   for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
-    Group_info_t *group = (Group_info_t *)(fifo.groups) + i;
+    Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + i;
     int groupId = i + HOBOTCV_GROUP_BEGIN;
     if (group->active_time == 0) {
       group->group_id = groupId;
@@ -374,34 +311,37 @@ int hobotcv_front::createGroup() {
       group->max_w = src_w;
       group->active_time = currentMicroseconds();
       group->process_id = processId;
+      group->group_state = 0;
       group_id = groupId;
       break;
-    } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
-      auto ret = HB_VPS_StopGrp(group->group_id);
-      if (ret == -268696577 || ret == -268696580) {
-        RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
-                    "group%d has been destroyed and will be recreated",
-                    groupId);
-      } else if (ret == 0) {
-        ret = HB_VPS_DestroyGrp(group->group_id);
-        if (ret == -268696577 || ret == -268696580) {
-          RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
-                      "group%d has been destroyed and will be recreated",
-                      groupId);
-        }
-      }
-
+    } else if (group->group_state == 1) {  //被系统回收
       group->group_id = groupId;
       group->max_h = src_h;
       group->max_w = src_w;
       group->active_time = currentMicroseconds();
       group->process_id = processId;
+      group->group_state = 0;
+      group_id = groupId;
+      break;
+    } else if (now_time - group->active_time > HOBOTCV_GROUP_OVER_TIME) {
+      //超时，hobotcv回收
+      HB_VPS_StopGrp(group->group_id);
+      HB_VPS_DestroyGrp(group->group_id);
+      memset(group->channels, 0, sizeof(Channel_info_t) * 7);
+      group->group_id = groupId;
+      group->max_h = src_h;
+      group->max_w = src_w;
+      group->active_time = currentMicroseconds();
+      group->process_id = processId;
+      group->group_state = 0;
+      memset(group->channels, 0, sizeof(Channel_info_t) * 7);
       group_id = groupId;
       break;
     }
   }
 
   if (-1 == group_id) {
+    //未找到空闲group
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hobot_cv group is full !!");
     return -1;
   }
@@ -416,12 +356,15 @@ int hobotcv_front::createGroup() {
         rclcpp::get_logger("hobot_cv"), "create group: %d failed!!", group_id);
     return -1;
   }
-  //启用channel 0，1，2，5,pym=3
-  groupChn0Init(group_id, grp_attr.maxW, grp_attr.maxH);
+  observe->vec_group.push_back(group_id);
+  //启用channel 1，2，5
   groupChn1Init(group_id, grp_attr.maxW, grp_attr.maxH);
   groupChn2Init(group_id, grp_attr.maxW, grp_attr.maxH);
   groupChn5Init(group_id, grp_attr.maxW, grp_attr.maxH);
-  groupPymChnInit(group_id, grp_attr.maxW, grp_attr.maxH);
+  if (pym_param.pymEnable == 1) {
+    groupPymChnInit(group_id, grp_attr.maxW, grp_attr.maxH);
+  }
+
   ret = HB_VPS_StartGrp(group_id);
   if (0 != ret) {
     RCLCPP_ERROR(
@@ -466,23 +409,26 @@ int hobotcv_front::setChannelRotate() {
 }
 
 int hobotcv_front::setChannelPyramidAttr() {
-  if (pym_param.pymEnable == 1) {
-    channel_id = 3;
-    VPS_PYM_CHN_ATTR_S pym_chn_attr;
-    memset(&pym_chn_attr, 0, sizeof(pym_chn_attr));
-    pym_chn_attr.timeout = pym_param.attr.timeout;
-    pym_chn_attr.ds_layer_en = ds_layer_en;
-    pym_chn_attr.frame_id = 0;
-    pym_chn_attr.frameDepth = 1;
-    memcpy(pym_chn_attr.ds_info,
-           pym_param.attr.ds_info,
-           sizeof(pym_chn_attr.ds_info));
+  if (src_w > 2048 || src_h > 1080) {
+    // pym输入分辨率大于2048x1080，需要将channel2设置为pym通道
+    channel_id = 2;
+  } else {  // pym输入分辨率小于2048x1080，channel 1 即可满足需求
+    channel_id = 1;
+  }
+  VPS_PYM_CHN_ATTR_S pym_chn_attr;
+  memset(&pym_chn_attr, 0, sizeof(pym_chn_attr));
+  pym_chn_attr.timeout = pym_param.attr.timeout;
+  pym_chn_attr.ds_layer_en = ds_layer_en;
+  pym_chn_attr.frame_id = 0;
+  pym_chn_attr.frameDepth = 1;
+  memcpy(pym_chn_attr.ds_info,
+         pym_param.attr.ds_info,
+         sizeof(pym_chn_attr.ds_info));
 
-    auto ret = HB_VPS_SetPymChnAttr(group_id, channel_id, &pym_chn_attr);
-    if (ret != 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "set pym chn failed!!");
-      return -1;
-    }
+  auto ret = HB_VPS_SetPymChnAttr(group_id, channel_id, &pym_chn_attr);
+  if (ret != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "set pym chn failed!!");
+    return -1;
   }
   return 0;
 }
@@ -493,25 +439,7 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   //申请系统内存
   int alloclen = src_h * src_w;
   int ret = HB_SYS_Alloc(&(mmz_paddr[0]), (void **)&(mmz_vaddr[0]), alloclen);
-  if (ret == -268500036) {  //需要重新初始化
-    RCLCPP_WARN(rclcpp::get_logger("hobot_cv"),
-                "vp sys memory is being reinitialized");
-    VP_CONFIG_S struVpConf;
-    memset(&struVpConf, 0x00, sizeof(VP_CONFIG_S));
-    struVpConf.u32MaxPoolCnt = 32;
-    HB_VP_SetConfig(&struVpConf);
-    ret = HB_VP_Init();
-    if (0 != ret) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed!!");
-      return -1;
-    }
-    ret = HB_SYS_Alloc(&(mmz_paddr[0]), (void **)&(mmz_vaddr[0]), alloclen);
-    if (ret != 0) {
-      RCLCPP_ERROR(
-          rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed ret: %d!!", ret);
-      return -1;
-    }
-  } else if (0 != ret) {
+  if (0 != ret) {
     RCLCPP_ERROR(
         rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed ret: %d!!", ret);
     return -1;
@@ -575,12 +503,6 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
                  group_id,
                  channel_id);
     group_sem_post();
-    sem_close(fifo.sem_groups);
-    sem_close(fifo.sem_group4);
-    sem_close(fifo.sem_group5);
-    sem_close(fifo.sem_group6);
-    sem_close(fifo.sem_group7);
-    shmdt(fifo.groups);
     return -1;
   }
 
@@ -595,13 +517,8 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
                   out_buf.img_addr,
                   reinterpret_cast<char *>(dst.data));
   HB_VPS_ReleaseChnFrame(group_id, channel_id, &out_buf);
+  HB_VPS_DisableChn(group_id, channel_id);
   group_sem_post();
-  sem_close(fifo.sem_groups);
-  sem_close(fifo.sem_group4);
-  sem_close(fifo.sem_group5);
-  sem_close(fifo.sem_group6);
-  sem_close(fifo.sem_group7);
-  shmdt(fifo.groups);
   return 0;
 }
 
@@ -654,30 +571,35 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
       }
     }
     HB_VPS_ReleaseChnFrame(group_id, channel_id, &pym_out);
+    HB_VPS_DisableChn(group_id, channel_id);
   } else {
     pymOut->isSuccess = false;
   }
 
   group_sem_post();
-  sem_close(fifo.sem_groups);
-  sem_close(fifo.sem_group4);
-  sem_close(fifo.sem_group5);
-  sem_close(fifo.sem_group6);
-  sem_close(fifo.sem_group7);
-  shmdt(fifo.groups);
   return 0;
 }
 
 int hobotcv_front::group_sem_wait() {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  ts.tv_sec += 2;  // 超时2秒
+
+  int ret = 0;
   if (4 == group_id) {
-    sem_wait(fifo.sem_group4);
+    ret = sem_timedwait(observe->fifo.sem_group4, &ts);
   } else if (5 == group_id) {
-    sem_wait(fifo.sem_group5);
+    ret = sem_timedwait(observe->fifo.sem_group5, &ts);
   } else if (6 == group_id) {
-    sem_wait(fifo.sem_group6);
+    ret = sem_timedwait(observe->fifo.sem_group6, &ts);
   } else if (7 == group_id) {
-    sem_wait(fifo.sem_group7);
+    ret = sem_timedwait(observe->fifo.sem_group7, &ts);
   } else {
+    return -1;
+  }
+  if (ret != 0) {  //等待超时
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "group: %d waite time out ", group_id);
     return -1;
   }
   return 0;
@@ -685,33 +607,15 @@ int hobotcv_front::group_sem_wait() {
 
 int hobotcv_front::group_sem_post() {
   if (4 == group_id) {
-    sem_post(fifo.sem_group4);
+    sem_post(observe->fifo.sem_group4);
   } else if (5 == group_id) {
-    sem_post(fifo.sem_group5);
+    sem_post(observe->fifo.sem_group5);
   } else if (6 == group_id) {
-    sem_post(fifo.sem_group6);
+    sem_post(observe->fifo.sem_group6);
   } else if (7 == group_id) {
-    sem_post(fifo.sem_group7);
+    sem_post(observe->fifo.sem_group7);
   } else {
     return -1;
-  }
-  return 0;
-}
-
-int hobotcv_front::groupChn0Init(int group_id, int max_w, int max_h) {
-  VPS_CHN_ATTR_S chn_attr_max;
-  memset(&chn_attr_max, 0, sizeof(chn_attr_max));
-  chn_attr_max.width = max_w > 1280 ? 1280 : max_w;
-  chn_attr_max.height = max_h > 720 ? 720 : max_h;
-  chn_attr_max.enScale = 1;
-  chn_attr_max.frameDepth = 1;
-  auto ret = HB_VPS_SetChnAttr(group_id, 0, &chn_attr_max);
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn0Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
   }
   return 0;
 }
@@ -774,20 +678,11 @@ int hobotcv_front::groupChn5Init(int group_id, int max_w, int max_h) {
 }
 
 int hobotcv_front::groupPymChnInit(int group_id, int max_w, int max_h) {
-  VPS_CHN_ATTR_S chn_attr_max;
-  memset(&chn_attr_max, 0, sizeof(chn_attr_max));
-  chn_attr_max.width = max_w > 2048 ? 2048 : max_w;
-  chn_attr_max.height = max_h > 1080 ? 1080 : max_h;
-  chn_attr_max.enScale = 1;
-  chn_attr_max.frameDepth = 1;
-  auto ret = HB_VPS_SetChnAttr(group_id, 3, &chn_attr_max);
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn3Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
-    return -1;
+  int pym_channel = 2;
+  if (max_w > 2048 || max_h > 1080) {
+    pym_channel = 2;
+  } else {
+    pym_channel = 1;
   }
 
   VPS_PYM_CHN_ATTR_S pym_chn_attr;
@@ -826,13 +721,16 @@ int hobotcv_front::groupPymChnInit(int group_id, int max_w, int max_h) {
     }
   }
 
-  ret = HB_VPS_SetPymChnAttr(group_id, 3, &pym_chn_attr);
+  auto ret = HB_VPS_SetPymChnAttr(group_id, pym_channel, &pym_chn_attr);
   if (ret != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
                  "group: %d pymChnInit failed!",
                  group_id);
     return -1;
   }
+  int group_index = group_id - HOBOTCV_GROUP_BEGIN;
+  Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + group_index;
+  group->channels[pym_channel].pym_enable = 1;
   return 0;
 }
 

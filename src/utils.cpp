@@ -14,16 +14,10 @@
 
 #include "include/utils.h"
 
-#include <fcntl.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
+#include <chrono>
 #include <cstring>
+#include <fstream>
 #include <iostream>
-
-#include "rclcpp/rclcpp.hpp"
 
 void prepare_nv12_tensor_without_padding(uint8_t *image_data,
                                          int image_height,
