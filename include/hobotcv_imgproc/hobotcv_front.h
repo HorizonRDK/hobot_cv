@@ -85,10 +85,6 @@ class hobotcv_front {
   hobotcv_single *observe;
   int processId = 0;
   int ds_layer_en = 0;
-
-  // vps系统内存
-  uint64_t mmz_paddr[2];
-  char *mmz_vaddr[2];
 };
 
 }  // namespace hobot_cv

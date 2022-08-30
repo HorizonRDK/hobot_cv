@@ -68,4 +68,14 @@ int hobotcv_single::shmfifoInit() {
   sem_close(shm_sem);
   return 0;
 }
+
+void hobotcv_single::Hobotcv_AddGroup(int group_id, hobotcv_sys_mem &sys_mem) {
+  std::unique_lock<std::mutex> lk(group_map_mtx);
+  group_map[group_id] = sys_mem;
+  lk.unlock();
+}
+
+hobotcv_sys_mem &hobotcv_single::GetGroupSysmem(int group_id) {
+  return group_map[group_id];
+}
 }  // namespace hobot_cv

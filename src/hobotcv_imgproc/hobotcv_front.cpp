@@ -18,6 +18,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -356,7 +357,25 @@ int hobotcv_front::createGroup() {
         rclcpp::get_logger("hobot_cv"), "create group: %d failed!!", group_id);
     return -1;
   }
-  observe->vec_group.push_back(group_id);
+
+  hobotcv_sys_mem sys_mem;
+  //申请系统内存
+  int alloclen = src_h * src_w;
+  ret = HB_SYS_Alloc(
+      &(sys_mem.mmz_paddr[0]), (void **)&(sys_mem.mmz_vaddr[0]), alloclen);
+  if (0 != ret) {
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed ret: %d!!", ret);
+    return -1;
+  }
+  alloclen = src_h * src_w / 2;
+  HB_SYS_Alloc(
+      &(sys_mem.mmz_paddr[1]), (void **)&(sys_mem.mmz_vaddr[1]), alloclen);
+  if (ret != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed!!");
+    return ret;
+  }
+  observe->Hobotcv_AddGroup(group_id, sys_mem);
   //启用channel 1，2，5
   groupChn1Init(group_id, grp_attr.maxW, grp_attr.maxH);
   groupChn2Init(group_id, grp_attr.maxW, grp_attr.maxH);
@@ -436,61 +455,50 @@ int hobotcv_front::setChannelPyramidAttr() {
 int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   int input_w = src.cols;
   int input_h = src.rows * 2 / 3;
-  //申请系统内存
-  int alloclen = src_h * src_w;
-  int ret = HB_SYS_Alloc(&(mmz_paddr[0]), (void **)&(mmz_vaddr[0]), alloclen);
-  if (0 != ret) {
-    RCLCPP_ERROR(
-        rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed ret: %d!!", ret);
-    return -1;
-  }
-  alloclen = src_h * src_w / 2;
-  ret = HB_SYS_Alloc(&(mmz_paddr[1]), (void **)&(mmz_vaddr[1]), alloclen);
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed!!");
-    return ret;
-  }
   if (roi.cropEnable == 1) {  // crop区域作为vps输入源
     auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
     // copy y
     for (int h = 0; h < roi.height; ++h) {
-      auto *raw = mmz_vaddr[0] + h * roi.width;
+      auto *raw =
+          observe->GetGroupSysmem(group_id).mmz_vaddr[0] + h * roi.width;
       auto *src = srcdata + (h + roi.y) * input_w + roi.x;
       memcpy(raw, src, roi.width);
     }
     // copy uv
     auto uv_data = srcdata + input_h * input_w;
     for (int32_t h = 0; h < roi.height / 2; ++h) {
-      auto *raw = mmz_vaddr[1] + h * roi.width;
+      auto *raw =
+          observe->GetGroupSysmem(group_id).mmz_vaddr[1] + h * roi.width;
       auto *src = uv_data + (h + (roi.y / 2)) * input_w + roi.x;
       memcpy(raw, src, roi.width);
     }
   } else {
     auto ydata = reinterpret_cast<const uint8_t *>(src.data);
     auto uvdata = ydata + src_h * src_w;
-    memcpy(mmz_vaddr[0], ydata, src_h * src_w);
-    memcpy(mmz_vaddr[1], uvdata, src_h * src_w / 2);
+    memcpy(
+        observe->GetGroupSysmem(group_id).mmz_vaddr[0], ydata, src_h * src_w);
+    memcpy(observe->GetGroupSysmem(group_id).mmz_vaddr[1],
+           uvdata,
+           src_h * src_w / 2);
   }
-
   hb_vio_buffer_t feedback_buf;
   feedback_buf.img_addr.width = src_w;
   feedback_buf.img_addr.height = src_h;
   feedback_buf.img_addr.stride_size = src_w;
 
-  feedback_buf.img_addr.addr[0] = mmz_vaddr[0];
-  feedback_buf.img_addr.addr[1] = mmz_vaddr[1];
-  feedback_buf.img_addr.paddr[0] = mmz_paddr[0];
-  feedback_buf.img_addr.paddr[1] = mmz_paddr[1];
-
-  ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
+  feedback_buf.img_addr.addr[0] =
+      observe->GetGroupSysmem(group_id).mmz_vaddr[0];
+  feedback_buf.img_addr.addr[1] =
+      observe->GetGroupSysmem(group_id).mmz_vaddr[1];
+  feedback_buf.img_addr.paddr[0] =
+      observe->GetGroupSysmem(group_id).mmz_paddr[0];
+  feedback_buf.img_addr.paddr[1] =
+      observe->GetGroupSysmem(group_id).mmz_paddr[1];
+  auto ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
   if (0 != ret) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SendFrame failed!!");
-    HB_SYS_Free(mmz_paddr[0], mmz_vaddr[0]);
-    HB_SYS_Free(mmz_paddr[1], mmz_vaddr[1]);
     return ret;
   }
-  HB_SYS_Free(mmz_paddr[0], mmz_vaddr[0]);
-  HB_SYS_Free(mmz_paddr[1], mmz_vaddr[1]);
   return 0;
 }
 

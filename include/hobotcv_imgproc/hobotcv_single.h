@@ -27,9 +27,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
-#include <vector>
 
 #include "dnn/hb_dnn.h"
 #include "hobotcv_imgproc/hobotcv_imgproc.h"
@@ -86,12 +87,20 @@ typedef struct HOBOT_CV_PYM_PARAM {
   PyramidAttr attr;
 } PyramidParam;
 
+struct hobotcv_sys_mem {
+  // vps系统内存
+  uint64_t mmz_paddr[2];
+  char *mmz_vaddr[2];
+};
+
 class hobotcv_single {
  public:
   ~hobotcv_single() {
     sem_wait(fifo.sem_groups);
-    for (size_t i = 0; i < vec_group.size(); ++i) {
-      int group_id = vec_group[i];
+    std::unique_lock<std::mutex> lk(group_map_mtx);
+    auto group_it = group_map.begin();
+    for (; group_it != group_map.end(); ++group_it) {
+      int group_id = group_it->first;
       if (group_id >= HOBOTCV_GROUP_BEGIN) {
         Group_info_t *group =
             (Group_info_t *)(fifo.groups) + (group_id - HOBOTCV_GROUP_BEGIN);
@@ -99,7 +108,10 @@ class hobotcv_single {
         group->process_id = 0;
         memset(group->channels, 0, sizeof(Channel_info_t) * 7);
       }
+      HB_SYS_Free(group_it->second.mmz_paddr[0], group_it->second.mmz_vaddr[0]);
+      HB_SYS_Free(group_it->second.mmz_paddr[1], group_it->second.mmz_vaddr[1]);
     }
+    lk.unlock();
     sem_post(fifo.sem_groups);
     sem_close(fifo.sem_groups);
     sem_close(fifo.sem_group4);
@@ -117,10 +129,15 @@ class hobotcv_single {
     return &obj;
   }
 
+  void Hobotcv_AddGroup(int group_id, hobotcv_sys_mem &sys_mem);
+  hobotcv_sys_mem &GetGroupSysmem(int group_id);
+
   shmfifo_t fifo;
-  std::vector<int> vec_group;
 
  private:
+  std::mutex group_map_mtx;
+  std::map<int, hobotcv_sys_mem> group_map;
+
   int shmfifoInit();
 
   hobotcv_single() {
