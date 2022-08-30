@@ -65,8 +65,7 @@ add_executable(example test/test_crop_resize_rotate.cpp)
 target_link_libraries(example
   ${LINK_LIBS}
   ${PROJECT_NAME}
-  ${VPS_LIBS}
-  ${NEON_LIBS})
+  ${VPS_LIBS})
 
 add_executable(crop_example test/test_crop.cpp)
 target_link_libraries(crop_example
@@ -96,8 +95,7 @@ add_executable(neon_example test/test_neon_blur.cpp)
 target_link_libraries(neon_example
   ${LINK_LIBS}
   ${PROJECT_NAME}
-  ${VPS_LIBS}
-  ${NEON_LIBS})
+  ${VPS_LIBS})
 
 add_executable(test_gaussian_blur test/test_gaussian_blur.cpp)
 target_link_libraries(test_gaussian_blur
