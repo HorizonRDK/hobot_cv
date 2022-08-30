@@ -62,8 +62,11 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
 ## 注意事项
   目前hobot_cv crop&resize&rotate只支持nv12格式。
+
   vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与创建该group的进程绑定使用，并只在此进程内使用，进程结束，group自动释放。hobot_cv默认使用group4，group5，group6和group7这四个group，所以hobot_cv最多支持四个不同输入属性同时使用vps加速。
+
   VPS加速，输入输出图片最大4096*2160，最小32*32。最大支持1.5倍放大，1/8缩小。宽度需为16的倍数，高度需为偶数。
+
   BPU加速，缩放范围是dst/src取值[1/185,256), 输入宽度为[16,4080], 宽度需为16的倍数。输出尺寸要求w<=4080,h<=4080。
   crop功能，crop区域必须在原图像内部。
 
@@ -71,17 +74,24 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
 ## package说明
   源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，rotate, 高斯滤波。
+
   hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或vps加速，rotate和pyramid只能使用vps。
+
   如果用户需要低频处理图片则可以选择使用bpu加速，bpu加速不需要对硬件进行单独的属性配置，vps对硬件属性进行配置耗时较长。
+
   如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发超时判断。
 
 ## 接口说明
 ### crop&resize&rotate&pyramid
 
 int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
 功能介绍：nv12格式图片的resize功能。
+
 返回值：成功返回0，失败返回非零。
+
 参数：
+
 | 参数名 | 解释                 |
 | ------ | -------------------- |
 | src    | 原nv12格式的图像矩阵 |
@@ -93,9 +103,13 @@ int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h
 | type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
 
 cv::Mat hobotcv_crop(cv::Mat &src,int src_h,int src_w,int dst_h,int dst_w,const cv::Range& rowRange,const cv::Range& colRange,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
 功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。
+
 返回值：crop&resize之后的nv12图像矩阵。
+
 注意：crop区域要在图片范围内
+
 参数：
 | 参数名   | 解释                 |
 | -------- | --------------------|
@@ -109,8 +123,11 @@ cv::Mat hobotcv_crop(cv::Mat &src,int src_h,int src_w,int dst_h,int dst_w,const 
 | type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
 
 int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
+
 功能介绍：将传入的图片进行旋转，只支持90，180，270度的旋转。采用vps加速。
+
 返回值：成功返回0，失败返回非零。
+
 参数：
 | 参数名   | 解释                 |
 | -------- | -------------------- |
@@ -119,9 +136,13 @@ int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
 | rotate   | 旋转角度的枚举  |
 
 int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION_E rotate,const cv::Range &rowRange,const cv::Range &colRange);
+
 功能介绍：crop，resize，rotate的全功能接口。先在原图中裁剪指定区域，然后缩放，最后旋转。采用vps加速。
+
 返回值：成功返回0，失败返回非零。
+
 注意：dst_h，dst_w是resize后的大小。无需考虑旋转后的宽高，接口会自动处理。例如，resize后的宽高为1920*1080，dst_w，dst_h传参分别为1920，1080。
+
 参数：
 | 参数名   | 解释                 |
 | -------- | -------------------- |
@@ -134,9 +155,13 @@ int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION
 | colRange | crop的横向坐标范围，范围为0时关闭crop|
 
 int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
+
 功能介绍：金字塔缩放的功能接口。通过参数attr配置缩小以及roi区域。缩小图像层数24(0~23)层，其中 0、4、8、12、16、20层为基础Base层，基于原图片进行缩放，基础层的每一层size都是上一基础层的1/2。其余层为ROI层，ROI层基于Base层作缩小(1、2、3 层基于Base0层，5、6、7 层基于Base4层，以此类推)各层可以单独使能，缩放区域、缩放系数可配置。
+
 返回值：成功返回0，失败返回非零。
+
 注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。基于vps硬件要求，必须使能Base0和Base4层。
+
 roi层输出计算公式：targetW = (roi_width - 1) x 64 / (64 + 1) + 1; targetH = (((roi_height / 2 - 1) x 64 / (64 + 1)) + 1) x 2; tag宽高向下取偶，如得到一个401 x 401的size，会向下取偶得到400 x 400
 
 参数：
@@ -163,8 +188,11 @@ OutputPyramid：金字塔缩放图片输出数据结构
 ### 高斯滤波(BPU加速)
 
 int HobotCVGaussianBlurCreate(HobotGaussianBlurParam param, HobotCVGaussianBlurHandle *phandle);
+
 功能介绍：创建高斯滤波的句柄。
+
 返回值：0表示成功，<0表示失败。
+
 参数：
 
 | 参数名   | 解释               |
@@ -189,8 +217,11 @@ int HobotCVGaussianBlurCreate(HobotGaussianBlurParam param, HobotCVGaussianBlurH
 - sigmay: 0.
 
 int HobotCVGaussianBlurProcess( HobotCVGaussianBlurHandle *phandle，cv::Mat *src，cv::Mat *dst);
+
 功能介绍：创建高斯滤波的句柄。
+
 返回值：0表示成功，<0表示失败。
+
 参数：
 
 | 参数名  | 解释                |
@@ -200,8 +231,11 @@ int HobotCVGaussianBlurProcess( HobotCVGaussianBlurHandle *phandle，cv::Mat *sr
 | dst     | 滤波后的TOF数据矩阵 |
 
 int HobotCVGaussianBlurDestroy( HobotCVGaussianBlurHandle *phandle);
+
 功能介绍：创建高斯滤波的句柄。
+
 返回值：0表示成功，<0表示失败。
+
 参数：
 
 | 参数名  | 解释                         |
@@ -211,8 +245,11 @@ int HobotCVGaussianBlurDestroy( HobotCVGaussianBlurHandle *phandle);
 ### 高斯滤波(neon加速)
 
 int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
+
 功能介绍：高斯滤波neon加速处理。
+
 返回值：0表示成功，-2表示非x3平台运行，-1表示参数错误。
+
 参数：
 | 参数名  | 解释                         |
 | ------- | ---------------------------- |
@@ -223,8 +260,11 @@ int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 ### 均值滤波
 
 int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
+
 功能介绍：均值滤波neon加速处理。
+
 返回值：0表示成功，-2表示非x3平台运行，-1表示参数错误。
+
 参数：
 | 参数名  | 解释                         |
 | ------- | ---------------------------- |
