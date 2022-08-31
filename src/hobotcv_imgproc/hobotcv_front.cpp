@@ -375,7 +375,9 @@ int hobotcv_front::createGroup() {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed!!");
     return ret;
   }
+  std::unique_lock<std::mutex> lk(observe->group_map_mtx);
   observe->Hobotcv_AddGroup(group_id, sys_mem);
+  lk.unlock();
   //启用channel 1，2，5
   groupChn1Init(group_id, grp_attr.maxW, grp_attr.maxH);
   groupChn2Init(group_id, grp_attr.maxW, grp_attr.maxH);
@@ -455,6 +457,7 @@ int hobotcv_front::setChannelPyramidAttr() {
 int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   int input_w = src.cols;
   int input_h = src.rows * 2 / 3;
+  std::unique_lock<std::mutex> lk(observe->group_map_mtx);
   if (roi.cropEnable == 1) {  // crop区域作为vps输入源
     auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
     // copy y
@@ -495,6 +498,7 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   feedback_buf.img_addr.paddr[1] =
       observe->GetGroupSysmem(group_id).mmz_paddr[1];
   auto ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
+  lk.unlock();
   if (0 != ret) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SendFrame failed!!");
     return ret;
