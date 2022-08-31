@@ -497,8 +497,8 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
       observe->GetGroupSysmem(group_id).mmz_paddr[0];
   feedback_buf.img_addr.paddr[1] =
       observe->GetGroupSysmem(group_id).mmz_paddr[1];
-  lk.unlock();
   auto ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
+  lk.unlock();
   if (0 != ret) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SendFrame failed!!");
     return ret;
