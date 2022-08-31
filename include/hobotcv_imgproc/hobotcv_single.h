@@ -133,9 +133,9 @@ class hobotcv_single {
   hobotcv_sys_mem &GetGroupSysmem(int group_id);
 
   shmfifo_t fifo;
+  std::mutex group_map_mtx;
 
  private:
-  std::mutex group_map_mtx;
   std::map<int, hobotcv_sys_mem> group_map;
 
   int shmfifoInit();
