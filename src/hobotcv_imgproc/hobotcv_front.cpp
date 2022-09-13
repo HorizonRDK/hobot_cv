@@ -41,6 +41,8 @@ hobotcv_front::hobotcv_front() {
 
 hobotcv_front::~hobotcv_front() {}
 
+/*当加速方式为AUTO时，先验证vps条件，此时printLog为false。
+若不适用vps加速，不输出error log，直接采用bpu加速方式。*/
 int hobotcv_front::prepareResizeParam(int src_width,
                                       int src_height,
                                       int dst_width,
@@ -52,6 +54,8 @@ int hobotcv_front::prepareResizeParam(int src_width,
     int remain = dst_width % 16;
     int recommend_dst_width = dst_width + 16 - remain;
     if (printLog) {
+      /*当加速方式为AUTO时，先验证vps条件，此时printLog为false。
+      若不适用vps加速，不输出error log，直接采用bpu加速方式。*/
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
                    "unsupported dst width %d! The dst width must "
                    "be a multiple of 16! The recommended dst width is %d ",
@@ -230,6 +234,8 @@ int hobotcv_front::prepareRotateParam(int width, int height, int rotation) {
   return 0;
 }
 
+/*当加速方式为AUTO时，先验证vps条件，此时printLog为false。
+若不适用vps加速，不输出error log，直接采用bpu加速方式。*/
 int hobotcv_front::prepareCropRoi(int src_height,
                                   int src_width,
                                   int dst_width,
