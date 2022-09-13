@@ -30,6 +30,8 @@
 #define ALIGN_16(w) ALIGNED_2E(w, 16U)
 #define ALIGN_64(w) ALIGNED_2E(w, 64U)
 
+int prepareBpuResizeParam(int src_w, int src_h, int dst_w, int dst_h);
+
 void prepare_nv12_tensor_without_padding(uint8_t *image_data,
                                          int image_height,
                                          int image_width,

@@ -48,38 +48,119 @@ int hobotcv_front::prepareResizeParam(int src_width,
                                       bool printLog) {
   int resize_src_width = roi.cropEnable ? roi.width : src_width;
   int resize_src_height = roi.cropEnable ? roi.height : src_height;
-  if (dst_width % 16 != 0 || dst_height % 2 != 0 || dst_height > 2160 ||
-      dst_width > 4096 || dst_height < 32 || dst_width < 32) {
+  if (dst_width % 16 != 0) {
+    int remain = dst_width % 16;
+    int recommend_dst_width = dst_width + 16 - remain;
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                   "unsupported dst width %d! The dst width must "
+                   "be a multiple of 16! The recommended dst width is %d ",
+                   dst_width,
+                   recommend_dst_width);
+    }
+    return -1;
+  }
+  if (dst_height % 2 != 0) {
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                   "unsupported dst height %d! The dst height must be even!",
+                   dst_height);
+    }
+    return -1;
+  }
+  if (dst_height > 2160 || dst_width > 4096 || dst_height < 32 ||
+      dst_width < 32) {
     if (printLog) {
       RCLCPP_ERROR(
-          rclcpp::get_logger("hobot_cv"),
-          "The dst width should be a multiple of 16 and the "
-          "height should be even! The output resolution ranges from 32 "
-          "x 32 to 4096 x 2160 !");
+          rclcpp::get_logger("hobot_cv resize"),
+          "unsupported dst resolution %d x %d! The supported dst resolution "
+          "is 32 x 32 to 4096 x 2160!",
+          dst_width,
+          dst_height);
     }
     return -1;
   }
-  if (resize_src_width % 16 != 0 || resize_src_height % 2 != 0 ||
-      resize_src_height < 32 || resize_src_width < 32 ||
+  if (resize_src_width % 16 != 0) {
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                   "unsupported src width %d! The src width must "
+                   "be a multiple of 16!",
+                   resize_src_width);
+    }
+    return -1;
+  }
+  if (resize_src_height % 2 != 0) {
+    if (printLog) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                   "unsupported src height %d! The src height must be even!",
+                   resize_src_height);
+    }
+    return -1;
+  }
+  if (resize_src_height < 32 || resize_src_width < 32 ||
       resize_src_height > 2160 || resize_src_width > 4096) {
     if (printLog) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                   "The input resolution ranges from 32 x 32 to 4096 x 4096");
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv resize"),
+          "unsupported src resolution %d x %d! The supported src resolution is "
+          "32 x 32 to 4096 x 2160",
+          resize_src_width,
+          resize_src_height);
     }
     return -1;
   }
-  if (dst_height > resize_src_height * 1.5 ||
-      dst_width > resize_src_width * 1.5) {
+  if (dst_height > resize_src_height * 1.5) {
+    float height_ratio =
+        static_cast<float>(dst_height) / static_cast<float>(resize_src_height);
     if (printLog) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                   "Max 1.5x upscale is supported");
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv resize"),
+          "Max 1.5x upscale is supported! Input dst height: %d src height: "
+          "%d height ratio: %.2f>1.5x. Please change the src or dst height",
+          dst_height,
+          resize_src_height,
+          height_ratio);
     }
     return -1;
   }
-  if (dst_width < resize_src_width / 8 || dst_height < resize_src_width / 8) {
+  if (dst_width > resize_src_width * 1.5) {
+    float width_ratio =
+        static_cast<float>(dst_width) / static_cast<float>(resize_src_width);
     if (printLog) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                   "Max 1/8 upscale is supported");
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                   "Max 1.5x upscale is supported! dst width: %d src width: %d "
+                   "width ratio: %.2f>1.5x. Please change the src or dst width",
+                   dst_width,
+                   resize_src_width,
+                   width_ratio);
+    }
+    return -1;
+  }
+  if (dst_width < resize_src_width / 8) {
+    float width_ratio =
+        static_cast<float>(dst_width) / static_cast<float>(resize_src_width);
+    if (printLog) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv resize"),
+          "Max 1/8 downscale is supported! dst width: %d src width: "
+          "%d width ratio: %.2f<1/8. Please change the src or dst width",
+          dst_width,
+          resize_src_width,
+          width_ratio);
+    }
+    return -1;
+  }
+  if (dst_height < resize_src_height / 8) {
+    float height_ratio =
+        static_cast<float>(dst_height) / static_cast<float>(resize_src_height);
+    if (printLog) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv resize"),
+          "Max 1/8 downscale is supported! dst height: %d src height: "
+          "%d height ratio: %.2f<1/8. Please change the src or dst height",
+          dst_height,
+          resize_src_height,
+          height_ratio);
     }
     return -1;
   }
@@ -90,7 +171,7 @@ int hobotcv_front::prepareResizeParam(int src_width,
   return 0;
 }
 
-int hobotcv_front::prepareRotateParam(int rotation) {
+int hobotcv_front::prepareRotateParam(int width, int height, int rotation) {
   switch (rotation) {
     case 0:
       rotate = 0;
@@ -106,10 +187,43 @@ int hobotcv_front::prepareRotateParam(int rotation) {
       rotate = 270;
       break;
     default:
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
                    "hobot_cv only supports 90、180、270 rotation!");
       return -1;
       break;
+  }
+  if (rotate == 90 || rotate == 270) {
+    if (width % 16 != 0 || height % 16 != 0) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
+                   "unsupported src resolution %d x %d, the width and height "
+                   "must be a multiple of 16!",
+                   width,
+                   height);
+      return -1;
+    }
+  } else {
+    if (width % 16 != 0) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv rotate"),
+          "unsupported src width: %d, the width must be a multiple of 16!",
+          width);
+      return -1;
+    }
+    if (height % 2 != 0) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
+                   "unsupported src height %d! The src height must be even!",
+                   height);
+    }
+  }
+
+  if (width > 4096 || height > 2160 || width < 32 || height < 32) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
+                 "unsupported src resolution %d x %d, The supported src "
+                 "resolution is 32 x "
+                 "32 to 4096 x 2160",
+                 width,
+                 height);
+    return -1;
   }
   return 0;
 }
@@ -125,37 +239,83 @@ int hobotcv_front::prepareCropRoi(int src_height,
       rowRange.end - rowRange.start <= 0) {
     roi.cropEnable = 0;
   } else {
-    if (rowRange.end <= rowRange.start || colRange.end <= colRange.start ||
-        rowRange.start < 0 || colRange.start < 0) {
+    if (rowRange.start < 0 || colRange.start < 0 || rowRange.end > src_height ||
+        colRange.end > src_width) {
       if (printLog) {
         RCLCPP_ERROR(
-            rclcpp::get_logger("hobot_cv"),
-            "Invalid Range data! The end data must be bigger than the "
-            "start data and the starting value cannot be less than zero!");
+            rclcpp::get_logger("hobot_cv crop"),
+            "Invalid Range data, rowRange.start:%d rowRange.end:%d "
+            "colRange.start: %d colRange.end: %d"
+            "rowRange should be in [0, %d) and colRange should be in [0, %d)",
+            rowRange.start,
+            rowRange.end,
+            colRange.start,
+            colRange.end,
+            src_height,
+            src_width);
       }
       return -1;
     }
-    if (rowRange.end > src_height || colRange.end > src_width) {
+
+    if (dst_height > (rowRange.end - rowRange.start) * 1.5) {
+      int crop_height = rowRange.end - rowRange.start;
+      float height_ratio =
+          static_cast<float>(dst_height) / static_cast<float>(crop_height);
       if (printLog) {
-        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                     "Invalid Range data! rowRange should in [0, %d) and "
-                     "colRange should in [0, %d)",
-                     src_height,
-                     src_width);
+        RCLCPP_ERROR(
+            rclcpp::get_logger("hobot_cv crop"),
+            "Max 1.5x upscale is supported! dst height: %d cropArea height: %d "
+            "height ratio: %.2f>1.5x. Please change the dst or cropArea height",
+            dst_height,
+            crop_height,
+            height_ratio);
       }
       return -1;
     }
-    if (dst_height > (rowRange.end - rowRange.start) * 1.5 ||
-        dst_width > (colRange.end - colRange.start) * 1.5) {
+
+    if (dst_width > (colRange.end - colRange.start) * 1.5) {
+      int crop_width = colRange.end - colRange.start;
+      float width_ratio =
+          static_cast<float>(dst_width) / static_cast<float>(crop_width);
       if (printLog) {
-        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "dst > cropArea * 1.5");
+        RCLCPP_ERROR(
+            rclcpp::get_logger("hobot_cv crop"),
+            "Max 1.5x upscale is supported! dst width: %d cropArea width: %d "
+            "width ratio: %.2f>1.5x. Please change the src or cropArea width",
+            dst_width,
+            crop_width,
+            width_ratio);
       }
       return -1;
     }
-    if (dst_width < (colRange.end - colRange.start) / 8 ||
-        dst_height < (rowRange.end - rowRange.start) / 8) {
+    if (dst_width < (colRange.end - colRange.start) / 8) {
+      int crop_width = colRange.end - colRange.start;
+      float width_ratio =
+          static_cast<float>(dst_width) / static_cast<float>(crop_width);
       if (printLog) {
-        RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "dst < cropArea / 8");
+        RCLCPP_ERROR(
+            rclcpp::get_logger("hobot_cv crop"),
+            "Max 1/8 downscale is supported! dst width: %d cropArea width: %d "
+            "width ratio: %.2f<1/8. Please change the src or cropArea width",
+            dst_width,
+            crop_width,
+            width_ratio);
+      }
+      return -1;
+    }
+    if (dst_height < (rowRange.end - rowRange.start) / 8) {
+      int crop_height = rowRange.end - rowRange.start;
+      float height_ratio =
+          static_cast<float>(dst_height) / static_cast<float>(crop_height);
+      if (printLog) {
+        RCLCPP_ERROR(
+            rclcpp::get_logger("hobot_cv crop"),
+            "Max 1/8 downscale is supported! dst height: %d cropArea "
+            "height: %d height ratio: %.2f<1/8. Please change the src or "
+            "cropArea height",
+            dst_height,
+            crop_height,
+            height_ratio);
       }
       return -1;
     }
@@ -171,14 +331,21 @@ int hobotcv_front::prepareCropRoi(int src_height,
 int hobotcv_front::preparePymraid(int src_h,
                                   int src_w,
                                   const PyramidAttr &attr) {
-  if (src_h > 4096 || src_w > 4096 || src_h < 64 || src_w < 64) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "The src resolution ranges from 64 x 64 to 4096 x 4096 !");
+  if (src_h > 2160 || src_w > 4096 || src_h < 64 || src_w < 64) {
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv pyramid"),
+        "unsupported src resolution %d x %d! The supported src resolution is "
+        "64 x 64 to 4096 x 4096!",
+        src_w,
+        src_h);
     return -1;
   }
   if (attr.ds_info[0].factor == 0 || attr.ds_info[4].factor == 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "base0 and base 4 must enable!");
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv pyramid"),
+                 "ds_info[0].factor: %d ds_info[0].factor: %d, base0 and base "
+                 "4 must enable!",
+                 attr.ds_info[0].factor,
+                 attr.ds_info[4].factor);
     return -1;
   }
   memcpy(&pym_param.attr, &attr, sizeof(PyramidAttr));
