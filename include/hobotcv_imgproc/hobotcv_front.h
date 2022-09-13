@@ -29,7 +29,7 @@ class hobotcv_front {
                          int dst_height,
                          bool printLog = true);
 
-  int prepareRotateParam(int rotation);
+  int prepareRotateParam(int width, int height, int rotation);
 
   int prepareCropRoi(int src_height,
                      int src_width,

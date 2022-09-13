@@ -14,10 +14,106 @@
 
 #include "include/utils.h"
 
+#include <arm_neon.h>
+
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iostream>
+
+#include "rclcpp/rclcpp.hpp"
+
+int prepareBpuResizeParam(int src_w, int src_h, int dst_w, int dst_h) {
+  if (src_w % 16 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "unsupported src width %d! The src width must "
+                 "be a multiple of 16!",
+                 src_w);
+    return -1;
+  }
+  if (src_h % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "unsupported src height %d! The src height must be even!",
+                 src_h);
+    return -1;
+  }
+  if (dst_w % 16 != 0) {
+    int remain = dst_w % 16;
+    int recommend_dst_width = dst_w + 16 - remain;
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "unsupported dst width %d! The dst width must "
+                 "be a multiple of 16! The recommended dst width is %d ",
+                 dst_w,
+                 recommend_dst_width);
+    return -1;
+  }
+  if (dst_h % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "unsupported dst height %d! The dst height must be even!",
+                 dst_h);
+    return -1;
+  }
+  if (src_w > 4080 || src_h > 4080) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "unsupported src resolution %d x %d ! The src resolution must "
+                 "be less than 4080 x 4080 !",
+                 src_w,
+                 src_h);
+    return -1;
+  }
+  if (dst_w > 4080 || dst_h > 4080) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "unsupported dst resolution %d x %d ! The dst resolution must "
+                 "be less than 4080 x 4080 !",
+                 dst_w,
+                 dst_h);
+    return -1;
+  }
+  if (dst_w > src_w * 256) {
+    float width_ratio = static_cast<float>(dst_w) / static_cast<float>(src_w);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "Max 256x upscale is supported! dst width: %d src width: "
+                 "%d width ratio: %f. Please change the src or dst width",
+                 dst_w,
+                 src_w,
+                 width_ratio);
+    return -1;
+  }
+  if (dst_h > src_h * 256) {
+    float height_ratio = static_cast<float>(dst_h) / static_cast<float>(src_h);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "Max 256x upscale is supported! dst height: %d src height: "
+                 "%d height ratio: %f. Please change the src or dst height",
+                 dst_h,
+                 src_h,
+                 height_ratio);
+    return -1;
+  }
+
+  if (dst_w < src_w / 185) {
+    float width_ratio = static_cast<float>(dst_w) / static_cast<float>(src_w);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "Max 1/185 downscale is supported! dst width: %d src width: "
+                 "%d width ratio: %f. Please change the src or dst width",
+                 dst_w,
+                 src_w,
+                 width_ratio);
+    return -1;
+  }
+
+  if (dst_h < src_h / 185) {
+    float height_ratio = static_cast<float>(dst_h) / static_cast<float>(src_h);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
+                 "Max 1/185 downscale is supported! dst height: %d src height: "
+                 "%d height ratio: %f. Please change the src or dst height",
+                 dst_h,
+                 src_h,
+                 height_ratio);
+    return -1;
+  }
+
+  return 0;
+}
 
 void prepare_nv12_tensor_without_padding(uint8_t *image_data,
                                          int image_height,

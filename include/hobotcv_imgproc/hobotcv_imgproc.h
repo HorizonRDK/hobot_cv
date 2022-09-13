@@ -56,6 +56,17 @@ typedef struct HOBOT_CV_PYM_ATTR {
 
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
 
+/**
+ * hobotcv加速图片resize处理
+ * @param[in] src: 需要进行resize的原图，只支持nv12格式图片
+ * @param[in] src_h: 原图高
+ * @param[in] src_w: 原图宽
+ * @param[out] dst：resize后输出的图像
+ * @param[in] dst_h: resize后图片高
+ * @param[in] dst_w: resize后图片宽
+ * @param[in] type：加速方式，默认采用vps加速
+ * @return 成功返回0，失败返回非0
+ */
 int hobotcv_resize(const cv::Mat &src,
                    int src_h,
                    int src_w,
@@ -64,6 +75,18 @@ int hobotcv_resize(const cv::Mat &src,
                    int dst_w,
                    HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
+/**
+ * hobotcv加速图片crop&resize处理
+ * @param[in] src: 需要进行crop&resize的原图，只支持nv12格式图片
+ * @param[in] src_h: 原图高
+ * @param[in] src_w: 原图宽
+ * @param[in] dst_h: resize后图片高
+ * @param[in] dst_w: resize后图片宽
+ * @param[in] rowRange：crop区域的纵向坐标范围，范围要在原图内
+ * @param[in] colRange：crop区域的横向坐标范围，范围要在原图内
+ * @param[in] type：加速方式，默认采用vps加速
+ * @return 返回crop&resize后图片矩阵，失败返回空图片矩阵
+ */
 cv::Mat hobotcv_crop(const cv::Mat &src,
                      int src_h,
                      int src_w,
@@ -73,8 +96,25 @@ cv::Mat hobotcv_crop(const cv::Mat &src,
                      const cv::Range &colRange,
                      HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
+/**
+ * hobotcv加速图片旋转处理
+ * @param[in] src: 需要进行旋转的原图，只支持nv12格式图片
+ * @param[out] dst：旋转后输出的图像
+ * @param[in] rotate：旋转角度，支持90，180，270
+ * @return 成功返回0，失败返回非0
+ */
 int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
 
+/**
+ * hobotcv加速图片crop&resize&rotate处理
+ * @param[in] src: 需要进行crop&resize&rotate的原图，只支持nv12格式图片
+ * @param[out] dst：crop&resize&rotate后输出的图像
+ * @param[in] dst_h: crop&resize后图片高
+ * @param[in] dst_w: crop&resize后图片宽
+ * @param[in] rowRange：crop区域的纵向坐标范围，范围要在原图内
+ * @param[in] colRange：crop区域的横向坐标范围，范围要在原图内
+ * @return 成功返回0，失败返回非0
+ */
 int hobotcv_imgproc(const cv::Mat &src,
                     cv::Mat &dst,
                     int dst_h,
@@ -83,6 +123,14 @@ int hobotcv_imgproc(const cv::Mat &src,
                     const cv::Range &rowRange,
                     const cv::Range &colRange);
 
+/**
+ * hobotcv加速图片pyramid处理
+ * @param[in] src: 需要进行pyramid处理的原图，只支持nv12格式图片
+ * @param[out]
+ * output：pyramid处理后输出的图像信息指针，输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT
+ * @param[in] attr：pyramid处理的配置属性，具体数据结构为HOBOT_CV_PYM_ATTR
+ * @return 成功返回0，失败返回非0
+ */
 int hobotcv_pymscale(const cv::Mat &src,
                      OutputPyramid *output,
                      const PyramidAttr &attr);

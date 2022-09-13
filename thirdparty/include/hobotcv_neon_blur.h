@@ -19,8 +19,22 @@
 
 namespace hobot_cv {
 
+/**
+ * neon加速高斯滤波
+ * @param[in] src: 需要进行高斯滤波的图像，支持int16和uint16数据格式
+ * @param[in] ksize: 滤波核大小
+ * @param[out] dst：高斯滤波后输出的图像
+ * @return 成功返回0，失败返回非0
+ */
 int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 
+/**
+ * neon加速均值滤波
+ * @param[in] src: 需要进行均值滤波的图像，支持int16和uint16数据格式
+ * @param[in] ksize: 滤波核大小
+ * @param[out] dst：均值滤波后输出的图像
+ * @return 成功返回0，失败返回非0
+ */
 int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 
 }  // namespace hobot_cv

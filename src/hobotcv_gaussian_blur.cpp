@@ -33,9 +33,18 @@ int32_t HobotCVGaussianBlurCreate(HobotGaussianBlurParam param,
 }
 
 int32_t HobotCVGaussianBlurProcess(HobotCVGaussianBlurHandle handle,
-                                   cv::Mat *src, cv::Mat *dst) {
-  if (!handle || !src || !dst) {
-    std::cout << "input handle null!" << std::endl;
+                                   cv::Mat *src,
+                                   cv::Mat *dst) {
+  if (!handle) {
+    std::cerr << "input handle null!" << std::endl;
+    return -1;
+  }
+  if (!src) {
+    std::cerr << "input src null!" << std::endl;
+    return -1;
+  }
+  if (!dst) {
+    std::cerr << "input dst null!" << std::endl;
     return -1;
   }
   auto pgb = reinterpret_cast<hobotcv::HobotGaussianBlur *>(handle);
@@ -45,7 +54,7 @@ int32_t HobotCVGaussianBlurProcess(HobotCVGaussianBlurHandle handle,
 
 int32_t HobotCVGaussianBlurDestroy(HobotCVGaussianBlurHandle handle) {
   if (!handle) {
-    std::cout << "input handle null!" << std::endl;
+    std::cerr << "input handle null!" << std::endl;
     return -1;
   }
   auto pgb = reinterpret_cast<hobotcv::HobotGaussianBlur *>(handle);
