@@ -188,7 +188,9 @@ int hobotcv_front::prepareRotateParam(int width, int height, int rotation) {
       break;
     default:
       RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
-                   "hobot_cv only supports 90、180、270 rotation!");
+                   "unsupport rotation: %d, hobot_cv only supports "
+                   "ROTATION_90、ROTATION_180、ROTATION_270!",
+                   rotation);
       return -1;
       break;
   }
@@ -342,7 +344,7 @@ int hobotcv_front::preparePymraid(int src_h,
   }
   if (attr.ds_info[0].factor == 0 || attr.ds_info[4].factor == 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv pyramid"),
-                 "ds_info[0].factor: %d ds_info[0].factor: %d, base0 and base "
+                 "ds_info[0].factor: %d ds_info[4].factor: %d, base0 and base "
                  "4 must enable!",
                  attr.ds_info[0].factor,
                  attr.ds_info[4].factor);

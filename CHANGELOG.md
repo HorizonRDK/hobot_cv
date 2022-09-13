@@ -1,6 +1,6 @@
 # Changelog for package hobot_cv
 
-hhp_1.0.7 (2022-9-14)
+hhp_1.1.1 (2022-9-14)
 ------------------
 1. 优化hobot_cv log输出
 
