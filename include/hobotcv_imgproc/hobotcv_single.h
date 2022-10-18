@@ -67,11 +67,11 @@ typedef struct HOBOT_CV_GROUP_INFO {
 typedef struct HOBOT_CV_SHM_FIFO {
   void *groups;
   int shmid;
-  sem_t *sem_groups;  // group信息总互斥
-  sem_t *sem_group4;  // group4互斥
-  sem_t *sem_group5;  // group5互斥
-  sem_t *sem_group6;  // group6互斥
-  sem_t *sem_group7;  // group7互斥
+  sem_t *sem_groups;            // group信息总互斥
+  std::timed_mutex mtx_group4;  // group4互斥锁
+  std::timed_mutex mtx_group5;  // group5互斥锁
+  std::timed_mutex mtx_group6;  // group6互斥锁
+  std::timed_mutex mtx_group7;  // group7互斥锁
 } shmfifo_t;
 
 typedef struct HOBOT_CV_CROP_RECT {
@@ -91,6 +91,7 @@ struct hobotcv_sys_mem {
   // vps系统内存
   uint64_t mmz_paddr[2];
   char *mmz_vaddr[2];
+  int timeout_num;  //记录对应group获取锁超时次数
 };
 
 class hobotcv_single {
@@ -114,10 +115,6 @@ class hobotcv_single {
     lk.unlock();
     sem_post(fifo.sem_groups);
     sem_close(fifo.sem_groups);
-    sem_close(fifo.sem_group4);
-    sem_close(fifo.sem_group5);
-    sem_close(fifo.sem_group6);
-    sem_close(fifo.sem_group7);
     shmdt(fifo.groups);
   }
 
@@ -129,8 +126,20 @@ class hobotcv_single {
     return &obj;
   }
 
-  void Hobotcv_AddGroup(int group_id, hobotcv_sys_mem &sys_mem);
+  //将group_id对应的系统内存保存到group_map中
+  void HobotcvAddGroup(int group_id, hobotcv_sys_mem &sys_mem);
+
+  //获取对应group_id的系统内存
   hobotcv_sys_mem &GetGroupSysmem(int group_id);
+
+  // group超时次数+1
+  void AddGroupTimeOut(int group_id);
+
+  //重置group超时次数
+  void ResetGroupTimeOutNum(int group_id);
+
+  //获取group_id对应group的超时次数
+  int GetGroupTimeOut(int group_id);
 
   shmfifo_t fifo;
   std::mutex group_map_mtx;
