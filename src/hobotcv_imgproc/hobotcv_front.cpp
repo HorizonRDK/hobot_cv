@@ -14,6 +14,7 @@
 #include "hobotcv_imgproc/hobotcv_front.h"
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -373,7 +374,37 @@ int hobotcv_front::groupScheduler() {
   //选取crop区域的宽高作为输入源宽高
   src_h = roi.cropEnable == 1 ? roi.height : src_h;
   src_w = roi.cropEnable == 1 ? roi.width : src_w;
-  sem_wait(observe->fifo.sem_groups);
+
+  static int sem_groups_times = 0;  //记录信号量超时次数
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  ts.tv_sec += 2;  // 超时2秒
+  int sem_groups_ret = sem_timedwait(observe->fifo.sem_groups, &ts);
+  if (sem_groups_ret != 0) {
+    sem_groups_times++;
+    if (sem_groups_times >= 3) {  //连续三次未获取到信号量，重置hobot_cv
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                   "Group abnormal block, reset hobot_cv!");
+      sem_groups_times = 0;
+      //关闭group
+      for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
+        Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + i;
+        if (group->group_id >= HOBOTCV_GROUP_BEGIN) {
+          HB_VPS_StopGrp(group->group_id);
+          HB_VPS_DestroyGrp(group->group_id);
+        }
+      }
+      //共享内存重新初始化
+      size_t size = sizeof(Group_info_t) * HOBOTCV_GROUP_SIZE;
+      memset(observe->fifo.groups, 0, size);
+    } else {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "wait sem_groups time out!");
+      return -1;
+    }
+  } else {
+    sem_groups_times = 0;
+  }
+
   bool have_same_group = false;
   for (int i = 0; i < HOBOTCV_GROUP_SIZE; i++) {
     Group_info_t *group = (Group_info_t *)(observe->fifo.groups) + i;
@@ -768,39 +799,52 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
 }
 
 int hobotcv_front::group_sem_wait() {
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  ts.tv_sec += 2;  // 超时2秒
+  std::chrono::milliseconds timeout(2000);  //超时2s
 
-  int ret = 0;
+  bool ret = false;
   if (4 == group_id) {
-    ret = sem_timedwait(observe->fifo.sem_group4, &ts);
+    ret = observe->fifo.mtx_group4.try_lock_for(timeout);
   } else if (5 == group_id) {
-    ret = sem_timedwait(observe->fifo.sem_group5, &ts);
+    ret = observe->fifo.mtx_group5.try_lock_for(timeout);
   } else if (6 == group_id) {
-    ret = sem_timedwait(observe->fifo.sem_group6, &ts);
+    ret = observe->fifo.mtx_group6.try_lock_for(timeout);
   } else if (7 == group_id) {
-    ret = sem_timedwait(observe->fifo.sem_group7, &ts);
+    ret = observe->fifo.mtx_group7.try_lock_for(timeout);
   } else {
     return -1;
   }
-  if (ret != 0) {  //等待超时
+  if (!ret) {  //等待超时
     RCLCPP_ERROR(
-        rclcpp::get_logger("hobot_cv"), "group: %d waite time out ", group_id);
+        rclcpp::get_logger("hobot_cv"), "wait group: %d time out ", group_id);
+    std::unique_lock<std::mutex> lk(observe->group_map_mtx);
+    observe->AddGroupTimeOut(group_id);
+    if (observe->GetGroupTimeOut(group_id) >= 3) {  //超时三次，重置group
+      observe->SetGroupTimeOutNum(group_id, 0);
+      Group_info_t *group = (Group_info_t *)(observe->fifo.groups) +
+                            (group_id - HOBOTCV_GROUP_BEGIN);
+      //超时，hobotcv回收
+      HB_VPS_StopGrp(group_id);
+      HB_VPS_DestroyGrp(group_id);
+      memset(group, 0, sizeof(Group_info_t));
+      group_sem_post();
+    }
+    lk.unlock();
     return -1;
+  } else {
+    observe->SetGroupTimeOutNum(group_id, 0);
   }
   return 0;
 }
 
 int hobotcv_front::group_sem_post() {
   if (4 == group_id) {
-    sem_post(observe->fifo.sem_group4);
+    observe->fifo.mtx_group4.unlock();
   } else if (5 == group_id) {
-    sem_post(observe->fifo.sem_group5);
+    observe->fifo.mtx_group5.unlock();
   } else if (6 == group_id) {
-    sem_post(observe->fifo.sem_group6);
+    observe->fifo.mtx_group6.unlock();
   } else if (7 == group_id) {
-    sem_post(observe->fifo.sem_group7);
+    observe->fifo.mtx_group7.unlock();
   } else {
     return -1;
   }

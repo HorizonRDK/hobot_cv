@@ -15,12 +15,19 @@
 
 namespace hobot_cv {
 int hobotcv_single::shmfifoInit() {
-  memset(&fifo, 0, sizeof(shmfifo_t));
   // Init sem
   //创建共享内存互斥信号
   sem_t *shm_sem = sem_open("/sem_shm", O_CREAT, 0666, 1);
   sem_wait(shm_sem);
-  int shmid = shmget((key_t)1234, 0, 0);
+
+  //系统第一次创建共享内存，状态莫名为dest
+  key_t key = ftok("/root", 0x6666);
+  int shmid = shmget(key, 0, 0);
+  if (shmid < 0) {
+    shmget(key, 10, IPC_CREAT | 0666);
+  }
+
+  shmid = shmget((key_t)1234, 0, 0);
   if (shmid < 0) {
     size_t size = sizeof(Group_info_t) * HOBOTCV_GROUP_SIZE;
     //创建新的共享内存区,返回共享内存标识符
@@ -43,10 +50,6 @@ int hobotcv_single::shmfifoInit() {
 
     //创建信号量
     fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT, 0666, 1);
-    fifo.sem_group4 = sem_open("/sem_group4", O_CREAT, 0666, 1);
-    fifo.sem_group5 = sem_open("/sem_group5", O_CREAT, 0666, 1);
-    fifo.sem_group6 = sem_open("/sem_group6", O_CREAT, 0666, 1);
-    fifo.sem_group7 = sem_open("/sem_group7", O_CREAT, 0666, 1);
   } else {
     fifo.shmid = shmid;
     //连接 shm
@@ -59,10 +62,6 @@ int hobotcv_single::shmfifoInit() {
     }
     //打开信号量
     fifo.sem_groups = sem_open("/sem_allgroup", O_CREAT);
-    fifo.sem_group4 = sem_open("/sem_group4", O_CREAT);
-    fifo.sem_group5 = sem_open("/sem_group5", O_CREAT);
-    fifo.sem_group6 = sem_open("/sem_group6", O_CREAT);
-    fifo.sem_group7 = sem_open("/sem_group7", O_CREAT);
   }
   sem_post(shm_sem);
   sem_close(shm_sem);
@@ -70,10 +69,30 @@ int hobotcv_single::shmfifoInit() {
 }
 
 void hobotcv_single::Hobotcv_AddGroup(int group_id, hobotcv_sys_mem &sys_mem) {
+  if (group_map.find(group_id) != group_map.end()) {
+    //释放原有内存，重新添加新内存
+    HB_SYS_Free(group_map[group_id].mmz_paddr[0],
+                group_map[group_id].mmz_vaddr[0]);
+    HB_SYS_Free(group_map[group_id].mmz_paddr[1],
+                group_map[group_id].mmz_vaddr[1]);
+  }
   group_map[group_id] = sys_mem;
 }
 
 hobotcv_sys_mem &hobotcv_single::GetGroupSysmem(int group_id) {
   return group_map[group_id];
 }
+
+void hobotcv_single::AddGroupTimeOut(int group_id) {
+  group_map[group_id].timeout_num++;
+}
+
+void hobotcv_single::SetGroupTimeOutNum(int group_id, int timeoutnum) {
+  group_map[group_id].timeout_num = timeoutnum;
+}
+
+int hobotcv_single::GetGroupTimeOut(int group_id) {
+  return group_map[group_id].timeout_num;
+}
+
 }  // namespace hobot_cv
