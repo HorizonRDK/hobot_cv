@@ -68,7 +68,7 @@ int hobotcv_single::shmfifoInit() {
   return 0;
 }
 
-void hobotcv_single::Hobotcv_AddGroup(int group_id, hobotcv_sys_mem &sys_mem) {
+void hobotcv_single::HobotcvAddGroup(int group_id, hobotcv_sys_mem &sys_mem) {
   if (group_map.find(group_id) != group_map.end()) {
     //释放原有内存，重新添加新内存
     HB_SYS_Free(group_map[group_id].mmz_paddr[0],
@@ -87,8 +87,8 @@ void hobotcv_single::AddGroupTimeOut(int group_id) {
   group_map[group_id].timeout_num++;
 }
 
-void hobotcv_single::SetGroupTimeOutNum(int group_id, int timeoutnum) {
-  group_map[group_id].timeout_num = timeoutnum;
+void hobotcv_single::ResetGroupTimeOutNum(int group_id) {
+  group_map[group_id].timeout_num = 0;
 }
 
 int hobotcv_single::GetGroupTimeOut(int group_id) {

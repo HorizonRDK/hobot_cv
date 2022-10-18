@@ -582,7 +582,7 @@ int hobotcv_front::createGroup() {
     return ret;
   }
   std::unique_lock<std::mutex> lk(observe->group_map_mtx);
-  observe->Hobotcv_AddGroup(group_id, sys_mem);
+  observe->HobotcvAddGroup(group_id, sys_mem);
   lk.unlock();
   //启用channel 1，2，5
   groupChn1Init(group_id, grp_attr.maxW, grp_attr.maxH);
@@ -819,7 +819,7 @@ int hobotcv_front::group_sem_wait() {
     std::unique_lock<std::mutex> lk(observe->group_map_mtx);
     observe->AddGroupTimeOut(group_id);
     if (observe->GetGroupTimeOut(group_id) >= 3) {  //超时三次，重置group
-      observe->SetGroupTimeOutNum(group_id, 0);
+      observe->ResetGroupTimeOutNum(group_id);
       Group_info_t *group = (Group_info_t *)(observe->fifo.groups) +
                             (group_id - HOBOTCV_GROUP_BEGIN);
       //超时，hobotcv回收
@@ -831,7 +831,7 @@ int hobotcv_front::group_sem_wait() {
     lk.unlock();
     return -1;
   } else {
-    observe->SetGroupTimeOutNum(group_id, 0);
+    observe->ResetGroupTimeOutNum(group_id);
   }
   return 0;
 }

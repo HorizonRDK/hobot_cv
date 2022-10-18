@@ -126,10 +126,19 @@ class hobotcv_single {
     return &obj;
   }
 
-  void Hobotcv_AddGroup(int group_id, hobotcv_sys_mem &sys_mem);
+  //将group_id对应的系统内存保存到group_map中
+  void HobotcvAddGroup(int group_id, hobotcv_sys_mem &sys_mem);
+
+  //获取对应group_id的系统内存
   hobotcv_sys_mem &GetGroupSysmem(int group_id);
+
+  // group超时次数+1
   void AddGroupTimeOut(int group_id);
-  void SetGroupTimeOutNum(int group_id, int timeoutnum);
+
+  //重置group超时次数
+  void ResetGroupTimeOutNum(int group_id);
+
+  //获取group_id对应group的超时次数
   int GetGroupTimeOut(int group_id);
 
   shmfifo_t fifo;
