@@ -24,10 +24,9 @@
 #include "rclcpp/rclcpp.hpp"
 
 int prepareBpuResizeParam(int src_w, int src_h, int dst_w, int dst_h) {
-  if (src_w % 16 != 0) {
+  if (src_w % 2 != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
-                 "unsupported src width %d! The src width must "
-                 "be a multiple of 16!",
+                 "unsupported src width %d! The src width must be even!",
                  src_w);
     return -1;
   }
@@ -37,14 +36,10 @@ int prepareBpuResizeParam(int src_w, int src_h, int dst_w, int dst_h) {
                  src_h);
     return -1;
   }
-  if (dst_w % 16 != 0) {
-    int remain = dst_w % 16;
-    int recommend_dst_width = dst_w + 16 - remain;
+  if (dst_w % 2 != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv resize"),
-                 "unsupported dst width %d! The dst width must "
-                 "be a multiple of 16! The recommended dst width is %d ",
-                 dst_w,
-                 recommend_dst_width);
+                 "unsupported dst width %d! The dst width must be even!",
+                 dst_w);
     return -1;
   }
   if (dst_h % 2 != 0) {
