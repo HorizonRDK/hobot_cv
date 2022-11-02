@@ -3,7 +3,7 @@ Getting Started with hobot_cv
 
 # 功能介绍
 
-hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate以及金字塔缩放功能，只支持nv12格式。
+hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate，边界填充以及金字塔缩放功能，只支持nv12格式。
 
 hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
@@ -184,6 +184,24 @@ OutputPyramid：金字塔缩放图片输出数据结构
 | -------------| -----------------------------------|
 | isSuccess    | 接口处理图片是否成功，0：失败 1：成功 |
 | pym_out      | pyramid缩放输出图片信息的数组，每一层是否有输出取决于PyramidAttr中对该层的factor配置是否为0 |
+
+### 边界填充
+
+int hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, char *dst, const Hobotcv_Padding_Type type, const PaddingArea &area, const uint8_t value = 0);
+
+功能介绍：对传入的图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT和HOBOTCV_REPLICATE两种填充方式。当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行padding。当type为HOBOTCV_REPLICATE时复制原图中的像素值进行padding，复制的长度即为Hobotcv_Padding_Area里上下左右的长度(例如：在300*300的原图右方区域padding 20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)
+返回值：成功返回0，失败返回-1
+
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 原nv12格式的图像数据 |
+| src_h    | 原图高              |
+| src_w    | 原图宽              |
+| dst      | 处理后输出图片数据，内存由用户提供 |
+| type     | 填充方式            |
+| area     | 填充区域，支持指定上下左右区域 |
+| src_w    | value，填充的像素值，取值0~255，默认为0 |
 
 ### 高斯滤波(BPU加速)
 

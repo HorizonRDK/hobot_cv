@@ -559,8 +559,10 @@ int hobotcv_front::createGroup() {
   grp_attr.frameDepth = 1;
   auto ret = HB_VPS_CreateGrp(group_id, &grp_attr);
   if (0 != ret) {
-    RCLCPP_ERROR(
-        rclcpp::get_logger("hobot_cv"), "create group: %d failed!!", group_id);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "create group: %d failed! ret: %d",
+                 group_id,
+                 ret);
     return -1;
   }
 
@@ -578,7 +580,8 @@ int hobotcv_front::createGroup() {
   HB_SYS_Alloc(
       &(sys_mem.mmz_paddr[1]), (void **)&(sys_mem.mmz_vaddr[1]), alloclen);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed! ret: %d", ret);
     return ret;
   }
   std::unique_lock<std::mutex> lk(observe->group_map_mtx);
@@ -594,8 +597,10 @@ int hobotcv_front::createGroup() {
 
   ret = HB_VPS_StartGrp(group_id);
   if (0 != ret) {
-    RCLCPP_ERROR(
-        rclcpp::get_logger("hobot_cv"), "StartGrp: %d failed!!", group_id);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "StartGrp: %d failed! ret: %d",
+                 group_id,
+                 ret);
     return -1;
   }
   return 0;
@@ -610,7 +615,8 @@ int hobotcv_front::setChannelAttr(int enscale) {
   chn_attr.frameDepth = 1;
   int ret = HB_VPS_SetChnAttr(group_id, channel_id, &chn_attr);
   if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SetChnAttr failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "SetChnAttr failed! ret: %d", ret);
     return ret;
   }
   return 0;
@@ -629,7 +635,8 @@ int hobotcv_front::setChannelRotate() {
   }
   int ret = HB_VPS_SetChnRotate(group_id, channel_id, hb_rotate);
   if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SetChnRotate failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "SetChnRotate failed! ret: %d", ret);
     return ret;
   }
   return 0;
@@ -654,7 +661,8 @@ int hobotcv_front::setChannelPyramidAttr() {
 
   auto ret = HB_VPS_SetPymChnAttr(group_id, channel_id, &pym_chn_attr);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "set pym chn failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "set pym chn failed!ret: %d", ret);
     return -1;
   }
   return 0;
@@ -706,7 +714,8 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   auto ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
   lk.unlock();
   if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SendFrame failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "SendFrame failed! ret: %d", ret);
     return ret;
   }
   return 0;
@@ -717,9 +726,10 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
   int ret = HB_VPS_GetChnFrame(group_id, channel_id, &out_buf, 2000);
   if (ret != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "get group: %d chn: %d frame failed!!",
+                 "get group: %d chn: %d frame failed! ret: %d",
                  group_id,
-                 channel_id);
+                 channel_id,
+                 ret);
     group_sem_post();
     return -1;
   }
@@ -792,6 +802,11 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
     HB_VPS_DisableChn(group_id, channel_id);
   } else {
     pymOut->isSuccess = false;
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "group: %d chn: %d get frame failed! ret: %d",
+                 group_id,
+                 channel_id,
+                 ret);
   }
 
   group_sem_post();
@@ -860,11 +875,13 @@ int hobotcv_front::groupChn1Init(int group_id, int max_w, int max_h) {
   chn_attr_max.frameDepth = 1;
   auto ret = HB_VPS_SetChnAttr(group_id, 1, &chn_attr_max);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn1Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"),
+        "group: %d Chn1Init failed! ret: %d chn_width: %d chn_height: %d",
+        group_id,
+        ret,
+        chn_attr_max.width,
+        chn_attr_max.height);
   }
   return 0;
 }
@@ -878,11 +895,13 @@ int hobotcv_front::groupChn2Init(int group_id, int max_w, int max_h) {
   chn_attr_max.frameDepth = 1;
   auto ret = HB_VPS_SetChnAttr(group_id, 2, &chn_attr_max);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn2Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"),
+        "group: %d Chn2Init failed! ret: %d chn_width: %d chn_height: %d",
+        group_id,
+        ret,
+        chn_attr_max.width,
+        chn_attr_max.height);
   }
   return 0;
 }
@@ -899,11 +918,13 @@ int hobotcv_front::groupChn5Init(int group_id, int max_w, int max_h) {
   chn_attr_max.frameDepth = 1;
   auto ret = HB_VPS_SetChnAttr(group_id, 5, &chn_attr_max);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn5Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"),
+        "group: %d Chn5Init failed! ret: %d chn_width: %d chn_height: %d",
+        group_id,
+        ret,
+        chn_attr_max.width,
+        chn_attr_max.height);
   }
   return 0;
 }
@@ -955,8 +976,9 @@ int hobotcv_front::groupPymChnInit(int group_id, int max_w, int max_h) {
   auto ret = HB_VPS_SetPymChnAttr(group_id, pym_channel, &pym_chn_attr);
   if (ret != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d pymChnInit failed!",
-                 group_id);
+                 "group: %d pymChnInit failed! ret: %d",
+                 group_id,
+                 ret);
     return -1;
   }
   int group_index = group_id - HOBOTCV_GROUP_BEGIN;
