@@ -102,7 +102,8 @@ int hobotcv_resize(const cv::Mat &src,
     return ret;
   }
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src.data, src_h, src_w, &input_tensor);
+  prepare_nv12_tensor_without_padding(
+      reinterpret_cast<const char *>(src.data), src_h, src_w, &input_tensor);
   // Prepare output tensor
   hbDNNTensor output_tensor;
   prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
@@ -240,7 +241,8 @@ cv::Mat hobotcv_crop(const cv::Mat &src,
   }
 
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src.data, src_h, src_w, &input_tensor);
+  prepare_nv12_tensor_without_padding(
+      reinterpret_cast<const char *>(src.data), src_h, src_w, &input_tensor);
   // Prepare output tensor
   hbDNNTensor output_tensor;
   prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
@@ -415,142 +417,24 @@ int hobotcv_pymscale(const cv::Mat &src,
   return 0;
 }
 
-bool check_padding_area(const PaddingArea &area) {
-  if (area.top == 0 && area.bottom == 0 && area.left == 0 && area.right == 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"), "No padding area!");
-    return false;
-  } else if (area.top % 2 != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid top size: %d! Padding size must be even");
-    return false;
-  } else if (area.bottom % 2 != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid bottom size: %d! Padding size must be even");
-    return false;
-  } else if (area.left % 2 != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid left size: %d! Padding size must be even");
-    return false;
-  } else if (area.right % 2 != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid right size: %d! Padding size must be even");
-    return false;
+HobotcvImagePtr hobotcv_BorderPadding(
+    const char *src,
+    const int &src_h,
+    const int &src_w,
+    const HobotcvBorderPadding::HobotcvPaddingType type,
+    const PaddingArea &area,
+    const uint8_t value) {
+  if (!check_padding_area(area.top, area.bottom, area.left, area.right)) {
+    return nullptr;
   }
-  return true;
-}
-
-void hobotcv_constant_padding(const char *src,
-                              const int &src_h,
-                              const int &src_w,
-                              char *dst,
-                              const PaddingArea &area,
-                              uint8_t value) {
-  int dst_w = src_w + area.left + area.right;
-  int dst_h = src_h + area.top + area.bottom;
-  int dst_y_size = dst_w * dst_h;
-  int dst_uv_size = dst_w * dst_h / 2;
-  char *dst_y = dst;
-  char *dst_uv = dst + dst_y_size;
-  memset(dst, value, dst_y_size + dst_uv_size);
-
-  // padding y
-  for (int h = 0; h < src_h; ++h) {
-    auto *raw = dst_y + (h + area.top) * dst_w + area.left;
-    auto *src_y_raw = src + h * src_w;
-    memcpy(raw, src_y_raw, src_w);
+  if (type == HobotcvBorderPadding::HOBOTCV_CONSTANT) {
+    return hobotcv_constant_padding(
+        src, src_h, src_w, area.top, area.bottom, area.left, area.right, value);
+  } else if (type == HobotcvBorderPadding::HOBOTCV_REPLICATE) {
+    return hobotcv_replicate_padding(
+        src, src_h, src_w, area.top, area.bottom, area.left, area.right);
   }
-
-  // padding uv
-  auto *src_uv_data = src + src_h * src_w;
-  for (int h = 0; h < src_h / 2; ++h) {
-    auto *raw = dst_uv + (h + (area.top / 2)) * dst_w + area.left;
-    auto *src_uv_raw = src_uv_data + h * src_w;
-    memcpy(raw, src_uv_raw, src_w);
-  }
-}
-
-void hobotcv_replicate_padding(const char *src,
-                               const int &src_h,
-                               const int &src_w,
-                               char *dst,
-                               const PaddingArea &area) {
-  uint32_t dst_w = src_w + area.left + area.right;
-  uint32_t dst_h = src_h + area.top + area.bottom;
-  int dst_y_size = dst_w * dst_h;
-  char *dst_y = dst;
-  char *dst_uv = dst + dst_y_size;
-  auto *src_uv = src + src_h * src_w;
-  uint32_t dst_bottom_start_line = src_h + area.top;
-  // padding top and bottom
-  for (uint32_t h = 0; h < dst_h; ++h) {  // padding y
-    auto *raw = dst_y + h * dst_w + area.left;
-    // auto *src_y_raw;
-    if (h < area.top) {  // padding top
-      auto *src_y_raw = src + h * src_w;
-      memcpy(raw, src_y_raw, src_w);
-    } else if (h >= dst_bottom_start_line) {  // padding bottom
-      int bottom_line = h - dst_bottom_start_line;
-      auto *src_y_raw = src + (src_h - area.bottom + bottom_line) * src_w;
-      memcpy(raw, src_y_raw, src_w);
-    } else {  // copy src
-      auto *src_y_raw = src + (h - area.top) * src_w;
-      memcpy(raw, src_y_raw, src_w);
-    }
-  }
-
-  for (uint32_t h = 0; h < dst_h / 2; ++h) {  // padding uv
-    auto *raw = dst_uv + h * dst_w + area.left;
-    if (h < (area.top / 2)) {  // top
-      auto *src_uv_raw = src_uv + h * src_w;
-      memcpy(raw, src_uv_raw, src_w);
-    } else if (h >= (dst_bottom_start_line / 2)) {  // bottom
-      int bottom_line = h - (dst_bottom_start_line / 2);
-      auto *src_uv_raw =
-          src_uv + ((src_h / 2) - (area.bottom / 2) + bottom_line) * src_w;
-      memcpy(raw, src_uv_raw, src_w);
-    } else {  // copy src
-      auto *src_uv_raw = src_uv + (h - (area.top / 2)) * src_w;
-      memcpy(raw, src_uv_raw, src_w);
-    }
-  }
-
-  // padding left and right
-  for (uint32_t h = 0; h < dst_h; ++h) {
-    // padding left
-    auto *dst_left_y = dst_y + h * dst_w;
-    auto *dst_left_uv = dst_uv + (h / 2) * dst_w;
-    auto *src_left_y = dst_y + h * dst_w + area.left;
-    auto *src_left_uv = dst_uv + (h / 2) * dst_w + area.left;
-    memcpy(dst_left_y, src_left_y, area.left);
-    memcpy(dst_left_uv, src_left_uv, area.left);
-    // padding right
-    auto *dst_right_y = dst_y + (h + 1) * dst_w - area.right;
-    auto *dst_right_uv = dst_uv + (1 + (h / 2)) * dst_w - area.right;
-    auto *src_right_y = dst_y + (h + 1) * dst_w - area.right * 2;
-    auto *src_right_uv = dst_uv + (1 + (h / 2)) * dst_w - area.right * 2;
-    memcpy(dst_right_y, src_right_y, area.right);
-    memcpy(dst_right_uv, src_right_uv, area.right);
-  }
-}
-
-int hobotcv_BorderPadding(const char *src,
-                          const int &src_h,
-                          const int &src_w,
-                          char *dst,
-                          const Hobotcv_Padding_Type type,
-                          const PaddingArea &area,
-                          const uint8_t value) {
-  if (!check_padding_area(area)) {
-    return -1;
-  }
-  if (type == HOBOTCV_CONSTANT) {
-    hobotcv_constant_padding(src, src_h, src_w, dst, area, value);
-  } else if (type == HOBOTCV_REPLICATE) {
-    hobotcv_replicate_padding(src, src_h, src_w, dst, area);
-  } else {
-    return -1;
-  }
-  return 0;
+  return nullptr;
 }
 
 }  // namespace hobot_cv

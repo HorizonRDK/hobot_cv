@@ -187,10 +187,16 @@ OutputPyramid：金字塔缩放图片输出数据结构
 
 ### 边界填充
 
-int hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, char *dst, const Hobotcv_Padding_Type type, const PaddingArea &area, const uint8_t value = 0);
+HobotcvImagePtr hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, const HobotcvPaddingType type, const PaddingArea &area, const uint8_t value = 0);
 
-功能介绍：对传入的图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT和HOBOTCV_REPLICATE两种填充方式。当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行padding。当type为HOBOTCV_REPLICATE时复制原图中的像素值进行padding，复制的长度即为Hobotcv_Padding_Area里上下左右的长度(例如：在300*300的原图右方区域padding 20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)
-返回值：成功返回0，失败返回-1
+功能介绍：对传入的原图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT和HOBOTCV_REPLICATE两种填充方式。
+          当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行padding。
+          当type为HOBOTCV_REPLICATE时复制原图中的像素值进行padding，复制的长度即为PaddingArea里上下左右的长度(例如：
+          在300*300的原图右方区域padding 20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)。
+          padding后的图片高h = src_h + area.top + area.bottom, 图片宽w = src_w + area.left + area.right
+          padding成功后，通过返回值返回padding后的图片数据指针。
+
+返回值：成功返回输出图片数据指针，失败返回nullptr
 
 参数：
 | 参数名   | 解释                 |
@@ -198,10 +204,9 @@ int hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, c
 | src      | 原nv12格式的图像数据 |
 | src_h    | 原图高              |
 | src_w    | 原图宽              |
-| dst      | 处理后输出图片数据，内存由用户提供 |
 | type     | 填充方式            |
 | area     | 填充区域，支持指定上下左右区域 |
-| src_w    | value，填充的像素值，取值0~255，默认为0 |
+| value    | 填充的像素值，取值0~255，默认为0 |
 
 ### 高斯滤波(BPU加速)
 

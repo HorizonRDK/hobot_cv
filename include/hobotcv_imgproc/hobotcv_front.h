@@ -18,6 +18,28 @@
 
 namespace hobot_cv {
 
+bool check_padding_area(uint32_t top,
+                        uint32_t bottom,
+                        uint32_t left,
+                        uint32_t right);
+
+std::unique_ptr<char[]> hobotcv_constant_padding(const char *src,
+                                                 const int &src_h,
+                                                 const int &src_w,
+                                                 uint32_t top,
+                                                 uint32_t bottom,
+                                                 uint32_t left,
+                                                 uint32_t right,
+                                                 uint8_t value);
+
+std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
+                                                  const int &src_h,
+                                                  const int &src_w,
+                                                  uint32_t top,
+                                                  uint32_t bottom,
+                                                  uint32_t left,
+                                                  uint32_t right);
+
 class hobotcv_front {
  public:
   explicit hobotcv_front();

@@ -29,6 +29,141 @@
 
 namespace hobot_cv {
 
+bool check_padding_area(uint32_t top,
+                        uint32_t bottom,
+                        uint32_t left,
+                        uint32_t right) {
+  if (top == 0 && bottom == 0 && left == 0 && right == 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"), "No padding area!");
+    return false;
+  } else if (top % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid top size: %d! Padding size must be even");
+    return false;
+  } else if (bottom % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid bottom size: %d! Padding size must be even");
+    return false;
+  } else if (left % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid left size: %d! Padding size must be even");
+    return false;
+  } else if (right % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid right size: %d! Padding size must be even");
+    return false;
+  }
+  return true;
+}
+
+std::unique_ptr<char[]> hobotcv_constant_padding(const char *src,
+                                                 const int &src_h,
+                                                 const int &src_w,
+                                                 uint32_t top,
+                                                 uint32_t bottom,
+                                                 uint32_t left,
+                                                 uint32_t right,
+                                                 uint8_t value) {
+  int dst_w = src_w + left + right;
+  int dst_h = src_h + top + bottom;
+  int dst_y_size = dst_w * dst_h;
+  int dst_uv_size = dst_w * dst_h / 2;
+  size_t dst_size = dst_y_size + dst_uv_size;
+  std::unique_ptr<char[]> unique(new char[dst_size]);
+  auto dst = unique.get();
+  char *dst_y = dst;
+  char *dst_uv = dst + dst_y_size;
+  memset(dst, value, dst_y_size + dst_uv_size);
+
+  // padding y
+  for (int h = 0; h < src_h; ++h) {
+    auto *raw = dst_y + (h + top) * dst_w + left;
+    auto *src_y_raw = src + h * src_w;
+    memcpy(raw, src_y_raw, src_w);
+  }
+
+  // padding uv
+  auto *src_uv_data = src + src_h * src_w;
+  for (int h = 0; h < src_h / 2; ++h) {
+    auto *raw = dst_uv + (h + (top / 2)) * dst_w + left;
+    auto *src_uv_raw = src_uv_data + h * src_w;
+    memcpy(raw, src_uv_raw, src_w);
+  }
+
+  return unique;
+}
+
+std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
+                                                  const int &src_h,
+                                                  const int &src_w,
+                                                  uint32_t top,
+                                                  uint32_t bottom,
+                                                  uint32_t left,
+                                                  uint32_t right) {
+  uint32_t dst_w = src_w + left + right;
+  uint32_t dst_h = src_h + top + bottom;
+  int dst_y_size = dst_w * dst_h;
+  size_t dst_size = dst_h * dst_w * 3 / 2;
+  std::unique_ptr<char[]> unique(new char[dst_size]);
+  auto dst = unique.get();
+  char *dst_y = dst;
+  char *dst_uv = dst + dst_y_size;
+  auto *src_uv = src + src_h * src_w;
+  uint32_t dst_bottom_start_line = src_h + top;
+  // padding top and bottom
+  for (uint32_t h = 0; h < dst_h; ++h) {  // padding y
+    auto *raw = dst_y + h * dst_w + left;
+    // auto *src_y_raw;
+    if (h < top) {  // padding top
+      auto *src_y_raw = src + h * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    } else if (h >= dst_bottom_start_line) {  // padding bottom
+      int bottom_line = h - dst_bottom_start_line;
+      auto *src_y_raw = src + (src_h - bottom + bottom_line) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    } else {  // copy src
+      auto *src_y_raw = src + (h - top) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    }
+  }
+
+  for (uint32_t h = 0; h < dst_h / 2; ++h) {  // padding uv
+    auto *raw = dst_uv + h * dst_w + left;
+    if (h < (top / 2)) {  // top
+      auto *src_uv_raw = src_uv + h * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    } else if (h >= (dst_bottom_start_line / 2)) {  // bottom
+      int bottom_line = h - (dst_bottom_start_line / 2);
+      auto *src_uv_raw =
+          src_uv + ((src_h / 2) - (bottom / 2) + bottom_line) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    } else {  // copy src
+      auto *src_uv_raw = src_uv + (h - (top / 2)) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    }
+  }
+
+  // padding left and right
+  for (uint32_t h = 0; h < dst_h; ++h) {
+    // padding left
+    auto *dst_left_y = dst_y + h * dst_w;
+    auto *dst_left_uv = dst_uv + (h / 2) * dst_w;
+    auto *src_left_y = dst_y + h * dst_w + left;
+    auto *src_left_uv = dst_uv + (h / 2) * dst_w + left;
+    memcpy(dst_left_y, src_left_y, left);
+    memcpy(dst_left_uv, src_left_uv, left);
+    // padding right
+    auto *dst_right_y = dst_y + (h + 1) * dst_w - right;
+    auto *dst_right_uv = dst_uv + (1 + (h / 2)) * dst_w - right;
+    auto *src_right_y = dst_y + (h + 1) * dst_w - right * 2;
+    auto *src_right_uv = dst_uv + (1 + (h / 2)) * dst_w - right * 2;
+    memcpy(dst_right_y, src_right_y, right);
+    memcpy(dst_right_uv, src_right_uv, right);
+  }
+
+  return unique;
+}
+
 hobotcv_front::hobotcv_front() {
   group_id = -1;
   roi.cropEnable = 0;

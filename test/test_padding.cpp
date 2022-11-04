@@ -40,7 +40,6 @@ int main() {
   BGRToNv12(bgr_mat, srcmat_nv12);
   auto dst_height = src_height + 40;
   auto dst_width = src_width + 40;
-  cv::Mat dstmat_nv12(dst_height * 3 / 2, dst_width, CV_8UC1);
   hobot_cv::PaddingArea paddingArea;
   paddingArea.top = 20;
   paddingArea.left = 20;
@@ -49,19 +48,18 @@ int main() {
 
   {  // constant
     auto before_padding = std::chrono::system_clock::now();
-    auto ret = hobot_cv::hobotcv_BorderPadding(
+    auto ptr = hobot_cv::hobotcv_BorderPadding(
         reinterpret_cast<const char *>(srcmat_nv12.data),
         src_height,
         src_width,
-        reinterpret_cast<char *>(dstmat_nv12.data),
-        hobot_cv::HOBOTCV_CONSTANT,
+        hobot_cv::HobotcvBorderPadding::HOBOTCV_CONSTANT,
         paddingArea,
         255);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
                         .count();
-    if (ret == 0) {
+    if (ptr != nullptr) {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
@@ -70,24 +68,25 @@ int main() {
           << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
+      cv::Mat dstmat_nv12(
+          dst_height * 3 / 2, dst_width, CV_8UC1, (void *)(ptr.get()));
+      writeImg(dstmat_nv12, "./constant_padding.jpg");
     }
-    writeImg(dstmat_nv12, "./constant_padding.jpg");
   }
 
   {  // HOBOTCV_REPLICATE
     auto before_padding = std::chrono::system_clock::now();
-    auto ret = hobot_cv::hobotcv_BorderPadding(
+    auto ptr = hobot_cv::hobotcv_BorderPadding(
         reinterpret_cast<const char *>(srcmat_nv12.data),
         src_height,
         src_width,
-        reinterpret_cast<char *>(dstmat_nv12.data),
-        hobot_cv::HOBOTCV_REPLICATE,
+        hobot_cv::HobotcvBorderPadding::HOBOTCV_REPLICATE,
         paddingArea);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
                         .count();
-    if (ret == 0) {
+    if (ptr != nullptr) {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
@@ -96,9 +95,10 @@ int main() {
           << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
+      cv::Mat dstmat_nv12(
+          dst_height * 3 / 2, dst_width, CV_8UC1, (void *)(ptr.get()));
+      writeImg(dstmat_nv12, "./replicate_padding.jpg");
     }
-    writeImg(dstmat_nv12, "./replicate_padding.jpg");
   }
-
   return 0;
 }
