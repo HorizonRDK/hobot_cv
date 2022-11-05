@@ -52,7 +52,7 @@ int main() {
         reinterpret_cast<const char *>(srcmat_nv12.data),
         src_height,
         src_width,
-        hobot_cv::HobotcvBorderPadding::HOBOTCV_CONSTANT,
+        hobot_cv::HobotcvPaddingType::HOBOTCV_CONSTANT,
         paddingArea,
         255);
     auto after_padding = std::chrono::system_clock::now();
@@ -80,7 +80,7 @@ int main() {
         reinterpret_cast<const char *>(srcmat_nv12.data),
         src_height,
         src_width,
-        hobot_cv::HobotcvBorderPadding::HOBOTCV_REPLICATE,
+        hobot_cv::HobotcvPaddingType::HOBOTCV_REPLICATE,
         paddingArea);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(

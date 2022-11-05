@@ -417,20 +417,19 @@ int hobotcv_pymscale(const cv::Mat &src,
   return 0;
 }
 
-HobotcvImagePtr hobotcv_BorderPadding(
-    const char *src,
-    const int &src_h,
-    const int &src_w,
-    const HobotcvBorderPadding::HobotcvPaddingType type,
-    const PaddingArea &area,
-    const uint8_t value) {
+HobotcvImagePtr hobotcv_BorderPadding(const char *src,
+                                      const int &src_h,
+                                      const int &src_w,
+                                      const HobotcvPaddingType type,
+                                      const PaddingArea &area,
+                                      const uint8_t value) {
   if (!check_padding_area(area.top, area.bottom, area.left, area.right)) {
     return nullptr;
   }
-  if (type == HobotcvBorderPadding::HOBOTCV_CONSTANT) {
+  if (type == HobotcvPaddingType::HOBOTCV_CONSTANT) {
     return hobotcv_constant_padding(
         src, src_h, src_w, area.top, area.bottom, area.left, area.right, value);
-  } else if (type == HobotcvBorderPadding::HOBOTCV_REPLICATE) {
+  } else if (type == HobotcvPaddingType::HOBOTCV_REPLICATE) {
     return hobotcv_replicate_padding(
         src, src_h, src_w, area.top, area.bottom, area.left, area.right);
   }

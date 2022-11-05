@@ -60,14 +60,11 @@ typedef std::unique_ptr<char[]> HobotcvImagePtr;
 // hobot_cv加速方式枚举
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
 
-class HobotcvBorderPadding {
- public:
-  // padding方式枚举
-  /*HOBOTCV_CONSTANT为使用接口传入的value值进行填充
-  HOBOTCV_REPLICATE为使用原图中的像素值进行padding，复制的长度即为PaddingArea里上下左右的长度
-  (例如：在300*300的原图右方区域padding20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)*/
-  enum HobotcvPaddingType { HOBOTCV_CONSTANT = 0, HOBOTCV_REPLICATE };
-};
+// padding方式枚举
+/*HOBOTCV_CONSTANT为使用接口传入的value值进行填充
+HOBOTCV_REPLICATE为使用原图中的像素值进行padding，复制的长度即为PaddingArea里上下左右的长度
+(例如：在300*300的原图右方区域padding20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)*/
+enum class HobotcvPaddingType { HOBOTCV_CONSTANT = 0, HOBOTCV_REPLICATE };
 
 // padding区域
 typedef struct Hobotcv_Padding_Area {
@@ -167,13 +164,12 @@ int hobotcv_pymscale(const cv::Mat &src,
  * value：填充的像素值，当填充方式为HOBOTCV_CONSTANT时，value值有效，取值范围0~255.默认值为0
  * @return 成功返回0，失败返回非0
  */
-HobotcvImagePtr hobotcv_BorderPadding(
-    const char *src,
-    const int &src_h,
-    const int &src_w,
-    const HobotcvBorderPadding::HobotcvPaddingType type,
-    const PaddingArea &area,
-    const uint8_t value = 0);
+HobotcvImagePtr hobotcv_BorderPadding(const char *src,
+                                      const int &src_h,
+                                      const int &src_w,
+                                      const HobotcvPaddingType type,
+                                      const PaddingArea &area,
+                                      const uint8_t value = 0);
 
 }  // namespace hobot_cv
 

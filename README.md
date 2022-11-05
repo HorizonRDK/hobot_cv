@@ -418,6 +418,30 @@ crop&resize&rotate效果展示:
 pyramid缩小效果展示,每层为上一层的1/2：
 ![image](./imgs/pym/pym_ds.jpg)
 
+### padding
+example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
+输出结果：
+```
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [padding_example-1]: process started with pid [60045]
+[padding_example-1] [INFO] [1666356109.426938837] [example]: 1920 x 1080 pix constant padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666356109.652406504] [example]: 1920 x 1080 pix replicate padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
+[padding_example-1]
+[INFO] [padding_example-1]: process has finished cleanly [pid 60045]
+```
+
+根据log显示，测试程序完成了对本地1920x1080分辨率图片的上下左右区域各填充20长度，HOBOTCV_CONSTANT方式耗时5ms，HOBOTCV_REPLICATE方式耗时5ms
+
+原图展示：
+![image](./config/test.jpg)
+
+HOBOTCV_CONSTANT方式填充展示：
+![image](./imgs/constant_padding.jpg)
+
+HOBOTCV_REPLICATE方式填充展示：
+![image](./imgs/replicate_padding.jpg)
+
 ### 高斯滤波bpu加速
 
 ```
