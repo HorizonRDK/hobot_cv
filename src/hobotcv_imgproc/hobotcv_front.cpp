@@ -64,30 +64,64 @@ std::unique_ptr<char[]> hobotcv_constant_padding(const char *src,
                                                  uint32_t left,
                                                  uint32_t right,
                                                  uint8_t value) {
-  int dst_w = src_w + left + right;
-  int dst_h = src_h + top + bottom;
-  int dst_y_size = dst_w * dst_h;
-  int dst_uv_size = dst_w * dst_h / 2;
+  // value转成yuv值
+  uint8_t value_y = value;
+  uint8_t value_u = 128;
+  uint8_t value_v = 128;
+
+  uint32_t dst_w = src_w + left + right;
+  uint32_t dst_h = src_h + top + bottom;
+  uint32_t dst_y_size = dst_w * dst_h;
+  uint32_t dst_uv_size = dst_w * dst_h / 2;
   size_t dst_size = dst_y_size + dst_uv_size;
   std::unique_ptr<char[]> unique(new char[dst_size]);
   auto dst = unique.get();
   char *dst_y = dst;
   char *dst_uv = dst + dst_y_size;
-  memset(dst, value, dst_y_size + dst_uv_size);
 
   // padding y
-  for (int h = 0; h < src_h; ++h) {
-    auto *raw = dst_y + (h + top) * dst_w + left;
-    auto *src_y_raw = src + h * src_w;
-    memcpy(raw, src_y_raw, src_w);
+  for (uint32_t h = 0; h < dst_h; ++h) {
+    if (h < top || h >= src_h + top) {
+      auto *raw = dst_y + h * dst_w;
+      memset(raw, value_y, dst_w);
+    } else {
+      // padding left
+      auto *raw = dst_y + h * dst_w;
+      memset(raw, value_y, left);
+      // copy src
+      raw = dst_y + h * dst_w + left;
+      auto *src_y_raw = src + (h - top) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+      // padding right
+      raw = dst_y + h * dst_w + left + src_w;
+      memset(raw, value_y, right);
+    }
   }
 
   // padding uv
   auto *src_uv_data = src + src_h * src_w;
-  for (int h = 0; h < src_h / 2; ++h) {
-    auto *raw = dst_uv + (h + (top / 2)) * dst_w + left;
-    auto *src_uv_raw = src_uv_data + h * src_w;
-    memcpy(raw, src_uv_raw, src_w);
+  for (uint32_t h = 0; h < dst_h / 2; ++h) {
+    auto *raw = dst_uv + h * dst_w;
+    if ((h < (top / 2)) || (h >= (src_h + top) / 2)) {
+      for (uint32_t w = 0; w < dst_w; w += 2) {
+        *(raw + w) = value_u;
+        *(raw + w + 1) = value_v;
+      }
+    } else {
+      auto *raw = dst_uv + h * dst_w;
+      for (uint32_t w = 0; w < left; w += 2) {
+        *(raw + w) = value_u;
+        *(raw + w + 1) = value_v;
+      }
+      raw = dst_uv + h * dst_w + left;
+      auto *src_uv_raw = src_uv_data + (h - (top / 2)) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+      raw = dst_uv + h * dst_w + left + src_w;
+      for (uint32_t w = 0; w < right; w += 2) {
+        *(raw + w) = value_u;
+        *(raw + w + 1) = value_v;
+      }
+    }
   }
 
   return unique;
@@ -113,13 +147,10 @@ std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
   // padding top and bottom
   for (uint32_t h = 0; h < dst_h; ++h) {  // padding y
     auto *raw = dst_y + h * dst_w + left;
-    // auto *src_y_raw;
     if (h < top) {  // padding top
-      auto *src_y_raw = src + h * src_w;
-      memcpy(raw, src_y_raw, src_w);
+      memcpy(raw, src, src_w);
     } else if (h >= dst_bottom_start_line) {  // padding bottom
-      int bottom_line = h - dst_bottom_start_line;
-      auto *src_y_raw = src + (src_h - bottom + bottom_line) * src_w;
+      auto *src_y_raw = src + (src_h - 1) * src_w;
       memcpy(raw, src_y_raw, src_w);
     } else {  // copy src
       auto *src_y_raw = src + (h - top) * src_w;
@@ -130,12 +161,9 @@ std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
   for (uint32_t h = 0; h < dst_h / 2; ++h) {  // padding uv
     auto *raw = dst_uv + h * dst_w + left;
     if (h < (top / 2)) {  // top
-      auto *src_uv_raw = src_uv + h * src_w;
-      memcpy(raw, src_uv_raw, src_w);
+      memcpy(raw, src_uv, src_w);
     } else if (h >= (dst_bottom_start_line / 2)) {  // bottom
-      int bottom_line = h - (dst_bottom_start_line / 2);
-      auto *src_uv_raw =
-          src_uv + ((src_h / 2) - (bottom / 2) + bottom_line) * src_w;
+      auto *src_uv_raw = src_uv + ((src_h / 2) - 1) * src_w;
       memcpy(raw, src_uv_raw, src_w);
     } else {  // copy src
       auto *src_uv_raw = src_uv + (h - (top / 2)) * src_w;
@@ -150,15 +178,111 @@ std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
     auto *dst_left_uv = dst_uv + (h / 2) * dst_w;
     auto *src_left_y = dst_y + h * dst_w + left;
     auto *src_left_uv = dst_uv + (h / 2) * dst_w + left;
-    memcpy(dst_left_y, src_left_y, left);
-    memcpy(dst_left_uv, src_left_uv, left);
+    uint16_t *src_left_uv_16 = (uint16_t *)(src_left_uv);
+    memset(dst_left_y, *src_left_y, left);
+    for (uint32_t w = 0; w < left; w += 2) {
+      uint16_t *dst_16 = (uint16_t *)(dst_left_uv + w);
+      *dst_16 = *src_left_uv_16;
+    }
     // padding right
-    auto *dst_right_y = dst_y + (h + 1) * dst_w - right;
-    auto *dst_right_uv = dst_uv + (1 + (h / 2)) * dst_w - right;
-    auto *src_right_y = dst_y + (h + 1) * dst_w - right * 2;
-    auto *src_right_uv = dst_uv + (1 + (h / 2)) * dst_w - right * 2;
-    memcpy(dst_right_y, src_right_y, right);
-    memcpy(dst_right_uv, src_right_uv, right);
+    auto *dst_right_y = dst_y + h * dst_w + left + src_w;
+    auto *dst_right_uv = dst_uv + (h / 2) * dst_w + left + src_w;
+    auto *src_right_y = dst_y + h * dst_w + left + src_w - 1;
+    auto *src_right_uv = dst_uv + (h / 2) * dst_w + left + src_w - 2;
+
+    uint16_t *src_right_uv_16 = (uint16_t *)(src_right_uv);
+    memset(dst_right_y, *src_right_y, right);
+    for (uint32_t w = 0; w < right; w += 2) {
+      uint16_t *dst_16 = (uint16_t *)(dst_right_uv + w);
+      *dst_16 = *src_right_uv_16;
+    }
+  }
+
+  return unique;
+}
+
+std::unique_ptr<char[]> hobotcv_reflect_padding(const char *src,
+                                                const int &src_h,
+                                                const int &src_w,
+                                                uint32_t top,
+                                                uint32_t bottom,
+                                                uint32_t left,
+                                                uint32_t right) {
+  uint32_t dst_w = src_w + left + right;
+  uint32_t dst_h = src_h + top + bottom;
+  int dst_y_size = dst_w * dst_h;
+  size_t dst_size = dst_h * dst_w * 3 / 2;
+  std::unique_ptr<char[]> unique(new char[dst_size]);
+  auto dst = unique.get();
+  char *dst_y = dst;
+  char *dst_uv = dst + dst_y_size;
+  auto *src_uv = src + src_h * src_w;
+  uint32_t dst_bottom_start_line = src_h + top;
+  // padding top and bottom
+  int index_top = top, index_bottom = bottom;
+  for (uint32_t h = 0; h < dst_h; ++h) {  // padding y
+    auto *raw = dst_y + h * dst_w + left;
+    if (h < top) {  // padding top
+      auto *src_y_raw = src + index_top * src_w;
+      memcpy(raw, src_y_raw, src_w);
+      index_top--;
+    } else if (h >= dst_bottom_start_line) {  // padding bottom
+      auto *src_y_raw = src + (src_h - bottom + index_bottom - 1) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+      index_bottom--;
+    } else {  // copy src
+      auto *src_y_raw = src + (h - top) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    }
+  }
+
+  index_top = top / 2;
+  index_bottom = bottom / 2;
+  for (uint32_t h = 0; h < dst_h / 2; ++h) {  // padding uv
+    auto *raw = dst_uv + h * dst_w + left;
+    if (h < (top / 2)) {  // top
+      auto *src_uv_raw = src_uv + index_top * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+      index_top--;
+    } else if (h >= (dst_bottom_start_line / 2)) {  // bottom
+      auto *src_uv_raw =
+          src_uv + ((src_h / 2) - (bottom / 2) + index_bottom - 1) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+      index_bottom--;
+    } else {  // copy src
+      auto *src_uv_raw = src_uv + (h - (top / 2)) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    }
+  }
+
+  // padding left and right
+  for (uint32_t h = 0; h < dst_h; ++h) {
+    // padding left
+    auto *dst_left_y = dst_y + h * dst_w;
+    auto *dst_left_uv = dst_uv + (h / 2) * dst_w;
+    auto *src_left_y = dst_y + h * dst_w + left;
+    auto *src_left_uv = dst_uv + (h / 2) * dst_w + left;
+    for (uint32_t w = 0; w < left; w++) {
+      *(dst_left_y + w) = *(src_left_y + left - w);
+      if (w % 2 == 0) {
+        uint16_t *dst_16 = (uint16_t *)(dst_left_uv + w);
+        uint16_t *src_left_uv_16 = (uint16_t *)(src_left_uv + left - w);
+        *dst_16 = *src_left_uv_16;
+      }
+    }
+    // padding right
+    auto *dst_right_y = dst_y + h * dst_w + left + src_w;
+    auto *dst_right_uv = dst_uv + (h / 2) * dst_w + left + src_w;
+    auto *src_right_y = dst_y + h * dst_w + left + src_w - 1;
+    auto *src_right_uv = dst_uv + (h / 2) * dst_w + left + src_w - 2;
+    for (uint32_t w = 0; w < right; w++) {
+      *(dst_right_y + w) = *(src_right_y - w);
+      if (w % 2 == 0) {
+        uint16_t *dst_16 = (uint16_t *)(dst_right_uv + w);
+        uint16_t *src_right_uv_16 = (uint16_t *)(src_right_uv - w);
+        *dst_16 = *src_right_uv_16;
+      }
+    }
   }
 
   return unique;

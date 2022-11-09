@@ -60,11 +60,17 @@ typedef std::unique_ptr<char[]> HobotcvImagePtr;
 // hobot_cv加速方式枚举
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
 
-// padding方式枚举
-/*HOBOTCV_CONSTANT为使用接口传入的value值进行填充
-HOBOTCV_REPLICATE为使用原图中的像素值进行padding，复制的长度即为PaddingArea里上下左右的长度
-(例如：在300*300的原图右方区域padding20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)*/
-enum class HobotcvPaddingType { HOBOTCV_CONSTANT = 0, HOBOTCV_REPLICATE };
+// 填充方式枚举
+/*
+HOBOTCV_CONSTANT为使用接口传入的value值进行填充
+HOBOTCV_REPLICATE为使用原图中最边界的像素值进行填充(例如：aaaaaa|abcdefgh|hhhhhhh)
+HOBOTCV_REFLECT为以原图边界为轴的镜像填充(例如：fedcba|abcdefgh|hgfedcb)
+*/
+enum class HobotcvPaddingType {
+  HOBOTCV_CONSTANT = 0,
+  HOBOTCV_REPLICATE,
+  HOBOTCV_REFLECT
+};
 
 // padding区域
 typedef struct Hobotcv_Padding_Area {

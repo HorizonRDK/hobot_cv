@@ -432,6 +432,9 @@ HobotcvImagePtr hobotcv_BorderPadding(const char *src,
   } else if (type == HobotcvPaddingType::HOBOTCV_REPLICATE) {
     return hobotcv_replicate_padding(
         src, src_h, src_w, area.top, area.bottom, area.left, area.right);
+  } else if (type == HobotcvPaddingType::HOBOTCV_REFLECT) {
+    return hobotcv_reflect_padding(
+        src, src_h, src_w, area.top, area.bottom, area.left, area.right);
   }
   return nullptr;
 }

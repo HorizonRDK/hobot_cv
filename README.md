@@ -189,10 +189,10 @@ OutputPyramid：金字塔缩放图片输出数据结构
 
 HobotcvImagePtr hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, const HobotcvPaddingType type, const PaddingArea &area, const uint8_t value = 0);
 
-功能介绍：对传入的原图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT和HOBOTCV_REPLICATE两种填充方式。
-          当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行padding。
-          当type为HOBOTCV_REPLICATE时复制原图中的像素值进行padding，复制的长度即为PaddingArea里上下左右的长度(例如：
-          在300*300的原图右方区域padding 20宽度，就复制原图最右边20宽度的像素进行padding。其他区域类似)。
+功能介绍：对传入的原图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT、HOBOTCV_REPLICATE和HOBOTCV_REFLECT三种填充方式。
+          当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行填充。
+          当type为HOBOTCV_REPLICATE时，使用原图中最边界的像素值进行填充(例如：例如：aaaaaa|abcdefgh|hhhhhhh)。
+          当type为HOBOTCV_REFLECT时，以原图边界为轴的镜像填充(例如：fedcba|abcdefgh|hgfedcb)
           padding后的图片高h = src_h + area.top + area.bottom, 图片宽w = src_w + area.left + area.right
           padding成功后，通过返回值返回padding后的图片数据指针。
 
@@ -423,24 +423,41 @@ example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
 输出结果：
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [padding_example-1]: process started with pid [60045]
-[padding_example-1] [INFO] [1666356109.426938837] [example]: 1920 x 1080 pix constant padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
+[INFO] [padding_example-1]: process started with pid [198513]
+[padding_example-1] [INFO] [1666363278.465449951] [example]: 1920 x 1080 hobot_cv constant padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
 [padding_example-1]
-[padding_example-1] [INFO] [1666356109.652406504] [example]: 1920 x 1080 pix replicate padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
+[padding_example-1] [INFO] [1666363278.708492493] [example]: 1920 x 1080 hobot_cv replicate padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
 [padding_example-1]
-[INFO] [padding_example-1]: process has finished cleanly [pid 60045]
+[padding_example-1] [INFO] [1666363278.932278868] [example]: 1920 x 1080 hobot_cv reflect padding top: 20 bottom: 20 left: 20 right: 20, time cost: 4 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363279.172539118] [example]: 1920 x 1080 opencv constant padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363279.382593118] [example]: 1920 x 1080 opencv replicate padding top: 20 bottom: 20 left: 20 right: 20, time cost: 5 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363279.615935868] [example]: 1920 x 1080 opencv reflect padding top: 20 bottom: 20 left: 20 right: 20, time cost: 6 ms
+[padding_example-1]
+[INFO] [padding_example-1]: process has finished cleanly [pid 198513]
 ```
 
-根据log显示，测试程序完成了对本地1920x1080分辨率图片的上下左右区域各填充20长度，HOBOTCV_CONSTANT方式耗时5ms，HOBOTCV_REPLICATE方式耗时5ms
+根据log显示，测试程序完成了对本地1920x1080分辨率图片的上下左右区域各填充20长度，
+hobot_cv三种填充方式与分别对应的opencv填充耗时对比如下
+|    填充方式     | hobot_cv耗时 | opencv耗时 |
+|  ------------- | ------------ | ---------- |
+|   CONSTANT     |    5ms       |    5ms     |
+|   REPLICATE    |    5ms       |    5ms     |
+|   REFLECT      |    4ms       |    6ms     |
 
 原图展示：
 ![image](./config/test.jpg)
 
 HOBOTCV_CONSTANT方式填充展示：
-![image](./imgs/constant_padding.jpg)
+![image](./imgs/cv_constant_padding.jpg)
 
 HOBOTCV_REPLICATE方式填充展示：
-![image](./imgs/replicate_padding.jpg)
+![image](./imgs/cv_replicate_padding.jpg)
+
+HOBOTCV_REFLECT方式填充展示：
+![image](./imgs/cv_reflect_padding.jpg)
 
 ### 高斯滤波bpu加速
 

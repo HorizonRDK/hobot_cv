@@ -53,8 +53,7 @@ int main() {
         src_height,
         src_width,
         hobot_cv::HobotcvPaddingType::HOBOTCV_CONSTANT,
-        paddingArea,
-        255);
+        paddingArea);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
@@ -63,14 +62,14 @@ int main() {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
-          << " pix constant padding top: 20 bottom: 20 left: 20 right: 20"
+          << " hobot_cv constant padding top: 20 bottom: 20 left: 20 right: 20"
           << ", time cost: " << interval << " ms"
           << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
       cv::Mat dstmat_nv12(
           dst_height * 3 / 2, dst_width, CV_8UC1, (void *)(ptr.get()));
-      writeImg(dstmat_nv12, "./constant_padding.jpg");
+      writeImg(dstmat_nv12, "./cv_constant_padding.jpg");
     }
   }
 
@@ -90,15 +89,96 @@ int main() {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
-          << " pix replicate padding top: 20 bottom: 20 left: 20 right: 20"
+          << " hobot_cv replicate padding top: 20 bottom: 20 left: 20 right: 20"
           << ", time cost: " << interval << " ms"
           << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
       cv::Mat dstmat_nv12(
           dst_height * 3 / 2, dst_width, CV_8UC1, (void *)(ptr.get()));
-      writeImg(dstmat_nv12, "./replicate_padding.jpg");
+      writeImg(dstmat_nv12, "./cv_replicate_padding.jpg");
     }
+  }
+
+  {  // HOBOTCV_REFLECT
+    auto before_padding = std::chrono::system_clock::now();
+    auto ptr = hobot_cv::hobotcv_BorderPadding(
+        reinterpret_cast<const char *>(srcmat_nv12.data),
+        src_height,
+        src_width,
+        hobot_cv::HobotcvPaddingType::HOBOTCV_REFLECT,
+        paddingArea);
+    auto after_padding = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_padding - before_padding)
+                        .count();
+    if (ptr != nullptr) {
+      std::stringstream ss_padding;
+      ss_padding
+          << src_width << " x " << src_height
+          << " hobot_cv reflect padding top: 20 bottom: 20 left: 20 right: 20"
+          << ", time cost: " << interval << " ms"
+          << "\n";
+      RCLCPP_INFO(
+          rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
+      cv::Mat dstmat_nv12(
+          dst_height * 3 / 2, dst_width, CV_8UC1, (void *)(ptr.get()));
+      writeImg(dstmat_nv12, "./cv_reflect_padding.jpg");
+    }
+  }
+
+  {  // opencv constant
+    cv::Mat dst_mat;
+    auto before_padding = std::chrono::system_clock::now();
+    cv::copyMakeBorder(bgr_mat, dst_mat, 20, 20, 20, 20, cv::BORDER_CONSTANT);
+    auto after_padding = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_padding - before_padding)
+                        .count();
+    std::stringstream ss_padding;
+    ss_padding
+        << src_width << " x " << src_height
+        << " opencv constant padding top: 20 bottom: 20 left: 20 right: 20"
+        << ", time cost: " << interval << " ms"
+        << "\n";
+    RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
+    cv::imwrite("./opencv_constant.jpg", dst_mat);
+  }
+
+  {  // opencv REPLICATE
+    cv::Mat dst_mat;
+    auto before_padding = std::chrono::system_clock::now();
+    cv::copyMakeBorder(bgr_mat, dst_mat, 20, 20, 20, 20, cv::BORDER_REPLICATE);
+    auto after_padding = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_padding - before_padding)
+                        .count();
+    std::stringstream ss_padding;
+    ss_padding
+        << src_width << " x " << src_height
+        << " opencv replicate padding top: 20 bottom: 20 left: 20 right: 20"
+        << ", time cost: " << interval << " ms"
+        << "\n";
+    RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
+    cv::imwrite("./opencv_replicate.jpg", dst_mat);
+  }
+
+  {  // opencv REFLECT
+    cv::Mat dst_mat;
+    auto before_padding = std::chrono::system_clock::now();
+    cv::copyMakeBorder(bgr_mat, dst_mat, 20, 20, 20, 20, cv::BORDER_REFLECT);
+    auto after_padding = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_padding - before_padding)
+                        .count();
+    std::stringstream ss_padding;
+    ss_padding
+        << src_width << " x " << src_height
+        << " opencv reflect padding top: 20 bottom: 20 left: 20 right: 20"
+        << ", time cost: " << interval << " ms"
+        << "\n";
+    RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
+    cv::imwrite("./opencv_reflect.jpg", dst_mat);
   }
   return 0;
 }
