@@ -31,7 +31,7 @@ void writeImg(cv::Mat &mat, std::string imgfile) {
 }
 
 int main() {
-  std::string image_file = "config/test.jpg";
+  std::string image_file = "config/512x512.jpg";
   cv::Mat bgr_mat = cv::imread(image_file, cv::IMREAD_COLOR);
   auto src_height = bgr_mat.rows;
   auto src_width = bgr_mat.cols;
@@ -40,10 +40,10 @@ int main() {
   BGRToNv12(bgr_mat, srcmat_nv12);
 
   hobot_cv::PaddingArea paddingArea;
-  paddingArea.top = 60;
-  paddingArea.left = 60;
-  paddingArea.right = 60;
-  paddingArea.bottom = 60;
+  paddingArea.top = 150;
+  paddingArea.left = 150;
+  paddingArea.right = 150;
+  paddingArea.bottom = 150;
 
   auto dst_height = src_height + paddingArea.top + paddingArea.bottom;
   auto dst_width = src_width + paddingArea.left + paddingArea.right;
@@ -62,11 +62,14 @@ int main() {
                         .count();
     if (ptr != nullptr) {
       std::stringstream ss_padding;
-      ss_padding
-          << src_width << " x " << src_height
-          << " hobot_cv constant padding top: 60 bottom: 60 left: 60 right: 60"
-          << ", time cost: " << interval << " ms"
-          << "\n";
+      ss_padding << src_width << " x " << src_height
+                 << " hobot_cv constant padding "
+                 << " top:" << paddingArea.top
+                 << " bottom: " << paddingArea.bottom
+                 << " left: " << paddingArea.left
+                 << " right: " << paddingArea.right
+                 << ", time cost: " << interval << " ms"
+                 << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
       cv::Mat dstmat_nv12(
@@ -89,11 +92,14 @@ int main() {
                         .count();
     if (ptr != nullptr) {
       std::stringstream ss_padding;
-      ss_padding
-          << src_width << " x " << src_height
-          << " hobot_cv replicate padding top: 60 bottom: 60 left: 60 right: 60"
-          << ", time cost: " << interval << " ms"
-          << "\n";
+      ss_padding << src_width << " x " << src_height
+                 << " hobot_cv replicate padding"
+                 << " top:" << paddingArea.top
+                 << " bottom: " << paddingArea.bottom
+                 << " left: " << paddingArea.left
+                 << " right: " << paddingArea.right
+                 << ", time cost: " << interval << " ms"
+                 << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
       cv::Mat dstmat_nv12(
@@ -116,11 +122,14 @@ int main() {
                         .count();
     if (ptr != nullptr) {
       std::stringstream ss_padding;
-      ss_padding
-          << src_width << " x " << src_height
-          << " hobot_cv reflect padding top: 60 bottom: 60 left: 60 right: 60"
-          << ", time cost: " << interval << " ms"
-          << "\n";
+      ss_padding << src_width << " x " << src_height
+                 << " hobot_cv reflect padding"
+                 << " top:" << paddingArea.top
+                 << " bottom: " << paddingArea.bottom
+                 << " left: " << paddingArea.left
+                 << " right: " << paddingArea.right
+                 << ", time cost: " << interval << " ms"
+                 << "\n";
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
       cv::Mat dstmat_nv12(
@@ -132,17 +141,25 @@ int main() {
   {  // opencv constant
     cv::Mat dst_mat;
     auto before_padding = std::chrono::system_clock::now();
-    cv::copyMakeBorder(bgr_mat, dst_mat, 60, 60, 60, 60, cv::BORDER_CONSTANT);
+    cv::copyMakeBorder(bgr_mat,
+                       dst_mat,
+                       paddingArea.top,
+                       paddingArea.bottom,
+                       paddingArea.left,
+                       paddingArea.right,
+                       cv::BORDER_CONSTANT);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
                         .count();
     std::stringstream ss_padding;
-    ss_padding
-        << src_width << " x " << src_height
-        << " opencv constant padding top: 60 bottom: 60 left: 60 right: 60"
-        << ", time cost: " << interval << " ms"
-        << "\n";
+    ss_padding << src_width << " x " << src_height << " opencv constant padding"
+               << " top:" << paddingArea.top
+               << " bottom: " << paddingArea.bottom
+               << " left: " << paddingArea.left
+               << " right: " << paddingArea.right << ", time cost: " << interval
+               << " ms"
+               << "\n";
     RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
     cv::imwrite("./opencv_constant.jpg", dst_mat);
   }
@@ -150,17 +167,26 @@ int main() {
   {  // opencv REPLICATE
     cv::Mat dst_mat;
     auto before_padding = std::chrono::system_clock::now();
-    cv::copyMakeBorder(bgr_mat, dst_mat, 60, 60, 60, 60, cv::BORDER_REPLICATE);
+    cv::copyMakeBorder(bgr_mat,
+                       dst_mat,
+                       paddingArea.top,
+                       paddingArea.bottom,
+                       paddingArea.left,
+                       paddingArea.right,
+                       cv::BORDER_REPLICATE);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
                         .count();
     std::stringstream ss_padding;
-    ss_padding
-        << src_width << " x " << src_height
-        << " opencv replicate padding top: 60 bottom: 60 left: 60 right: 60"
-        << ", time cost: " << interval << " ms"
-        << "\n";
+    ss_padding << src_width << " x " << src_height
+               << " opencv replicate padding"
+               << " top:" << paddingArea.top
+               << " bottom: " << paddingArea.bottom
+               << " left: " << paddingArea.left
+               << " right: " << paddingArea.right << ", time cost: " << interval
+               << " ms"
+               << "\n";
     RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
     cv::imwrite("./opencv_replicate.jpg", dst_mat);
   }
@@ -168,17 +194,25 @@ int main() {
   {  // opencv REFLECT
     cv::Mat dst_mat;
     auto before_padding = std::chrono::system_clock::now();
-    cv::copyMakeBorder(bgr_mat, dst_mat, 60, 60, 60, 60, cv::BORDER_REFLECT);
+    cv::copyMakeBorder(bgr_mat,
+                       dst_mat,
+                       paddingArea.top,
+                       paddingArea.bottom,
+                       paddingArea.left,
+                       paddingArea.right,
+                       cv::BORDER_REFLECT);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
                         .count();
     std::stringstream ss_padding;
-    ss_padding
-        << src_width << " x " << src_height
-        << " opencv reflect padding top: 60 bottom: 60 left: 60 right: 60"
-        << ", time cost: " << interval << " ms"
-        << "\n";
+    ss_padding << src_width << " x " << src_height << " opencv reflect padding"
+               << " top:" << paddingArea.top
+               << " bottom: " << paddingArea.bottom
+               << " left: " << paddingArea.left
+               << " right: " << paddingArea.right << ", time cost: " << interval
+               << " ms"
+               << "\n";
     RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
     cv::imwrite("./opencv_reflect.jpg", dst_mat);
   }
