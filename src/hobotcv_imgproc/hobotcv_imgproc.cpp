@@ -102,7 +102,8 @@ int hobotcv_resize(const cv::Mat &src,
     return ret;
   }
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src.data, src_h, src_w, &input_tensor);
+  prepare_nv12_tensor_without_padding(
+      reinterpret_cast<const char *>(src.data), src_h, src_w, &input_tensor);
   // Prepare output tensor
   hbDNNTensor output_tensor;
   prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
@@ -240,7 +241,8 @@ cv::Mat hobotcv_crop(const cv::Mat &src,
   }
 
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src.data, src_h, src_w, &input_tensor);
+  prepare_nv12_tensor_without_padding(
+      reinterpret_cast<const char *>(src.data), src_h, src_w, &input_tensor);
   // Prepare output tensor
   hbDNNTensor output_tensor;
   prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
@@ -413,6 +415,28 @@ int hobotcv_pymscale(const cv::Mat &src,
     return -1;
   }
   return 0;
+}
+
+HobotcvImagePtr hobotcv_BorderPadding(const char *src,
+                                      const int &src_h,
+                                      const int &src_w,
+                                      const HobotcvPaddingType type,
+                                      const PaddingArea &area,
+                                      const uint8_t value) {
+  if (!check_padding_area(area.top, area.bottom, area.left, area.right)) {
+    return nullptr;
+  }
+  if (type == HobotcvPaddingType::HOBOTCV_CONSTANT) {
+    return hobotcv_constant_padding(
+        src, src_h, src_w, area.top, area.bottom, area.left, area.right, value);
+  } else if (type == HobotcvPaddingType::HOBOTCV_REPLICATE) {
+    return hobotcv_replicate_padding(
+        src, src_h, src_w, area.top, area.bottom, area.left, area.right);
+  } else if (type == HobotcvPaddingType::HOBOTCV_REFLECT) {
+    return hobotcv_reflect_padding(
+        src, src_h, src_w, area.top, area.bottom, area.left, area.right);
+  }
+  return nullptr;
 }
 
 }  // namespace hobot_cv

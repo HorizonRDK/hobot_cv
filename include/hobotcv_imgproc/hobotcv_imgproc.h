@@ -15,6 +15,7 @@
 #ifndef HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 #define HOBOT_CV_INCLUDE_HOBOTCV_IMGPROC_HPP_
 
+#include <memory>
 #include <vector>
 
 #include "opencv2/core/mat.hpp"
@@ -54,8 +55,30 @@ typedef struct HOBOT_CV_PYM_ATTR {
   PymramidScaleInfo ds_info[24];
 } PyramidAttr;
 
+typedef std::unique_ptr<char[]> HobotcvImagePtr;
+
+// hobot_cv加速方式枚举
 enum HobotcvSpeedUpType { HOBOTCV_AUTO = 0, HOBOTCV_VPS = 1, HOBOTCV_BPU = 2 };
 
+// 填充方式枚举
+/*
+HOBOTCV_CONSTANT为使用接口传入的value值进行填充
+HOBOTCV_REPLICATE为使用原图中最边界的像素值进行填充(例如：aaaaaa|abcdefgh|hhhhhhh)
+HOBOTCV_REFLECT为以原图边界为轴的镜像填充(例如：fedcba|abcdefgh|hgfedcb)
+*/
+enum class HobotcvPaddingType {
+  HOBOTCV_CONSTANT = 0,
+  HOBOTCV_REPLICATE,
+  HOBOTCV_REFLECT
+};
+
+// padding区域
+typedef struct Hobotcv_Padding_Area {
+  uint32_t top;
+  uint32_t bottom;
+  uint32_t left;
+  uint32_t right;
+} PaddingArea;
 /**
  * hobotcv加速图片resize处理
  * @param[in] src: 需要进行resize的原图，只支持nv12格式图片
@@ -134,6 +157,25 @@ int hobotcv_imgproc(const cv::Mat &src,
 int hobotcv_pymscale(const cv::Mat &src,
                      OutputPyramid *output,
                      const PyramidAttr &attr);
+
+/**
+ * hobotcv边界填充处理
+ * @param[in] src: 需要填充边界的原图，只支持nv12格式图片
+ * @param[in] src_h: 原图高
+ * @param[in] src_w: 原图宽
+ * @param[out] dst：填充处理后输出的图片数据，nv12格式
+ * @param[in] type：填充方式，支持指定值填充和复制原图边界两种方式
+ * @param[in] area：上下左右填充区域
+ * @param[in]
+ * value：填充的像素值，当填充方式为HOBOTCV_CONSTANT时，value值有效，取值范围0~255.默认值为0
+ * @return 成功返回0，失败返回非0
+ */
+HobotcvImagePtr hobotcv_BorderPadding(const char *src,
+                                      const int &src_h,
+                                      const int &src_w,
+                                      const HobotcvPaddingType type,
+                                      const PaddingArea &area,
+                                      const uint8_t value = 0);
 
 }  // namespace hobot_cv
 

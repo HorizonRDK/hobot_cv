@@ -110,7 +110,7 @@ int prepareBpuResizeParam(int src_w, int src_h, int dst_w, int dst_h) {
   return 0;
 }
 
-void prepare_nv12_tensor_without_padding(uint8_t *image_data,
+void prepare_nv12_tensor_without_padding(const char *image_data,
                                          int image_height,
                                          int image_width,
                                          hbDNNTensor *tensor) {

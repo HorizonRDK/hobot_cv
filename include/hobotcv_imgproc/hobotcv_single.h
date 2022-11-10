@@ -158,7 +158,8 @@ class hobotcv_single {
     HB_VP_SetConfig(&struVpConf);
     int ret = HB_VP_Init();
     if (0 != ret) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed!!");
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv"), "HB_VP_Init failed! ret: %d", ret);
     }
   }
 };

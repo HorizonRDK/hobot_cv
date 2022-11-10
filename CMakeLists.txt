@@ -91,6 +91,11 @@ target_link_libraries(pyramid_example
   ${PROJECT_NAME}
   ${VPS_LIBS})
 
+add_executable(padding_example test/test_padding.cpp)
+target_link_libraries(padding_example
+  ${LINK_LIBS}
+  ${PROJECT_NAME})
+
 add_executable(neon_example test/test_neon_blur.cpp)
 target_link_libraries(neon_example
   ${LINK_LIBS}
@@ -127,7 +132,7 @@ DESTINATION lib/)
 
 # Install executables
 install(
-  TARGETS example crop_example resize_example rotate_example pyramid_example test_gaussian_blur neon_example
+  TARGETS example crop_example resize_example rotate_example pyramid_example padding_example test_gaussian_blur neon_example
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

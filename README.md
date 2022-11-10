@@ -3,7 +3,7 @@ Getting Started with hobot_cv
 
 # 功能介绍
 
-hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate以及金字塔缩放功能，只支持nv12格式。
+hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate，边界填充以及金字塔缩放功能，只支持nv12格式。
 
 hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
@@ -184,6 +184,29 @@ OutputPyramid：金字塔缩放图片输出数据结构
 | -------------| -----------------------------------|
 | isSuccess    | 接口处理图片是否成功，0：失败 1：成功 |
 | pym_out      | pyramid缩放输出图片信息的数组，每一层是否有输出取决于PyramidAttr中对该层的factor配置是否为0 |
+
+### 边界填充
+
+HobotcvImagePtr hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, const HobotcvPaddingType type, const PaddingArea &area, const uint8_t value = 0);
+
+功能介绍：对传入的原图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT、HOBOTCV_REPLICATE和HOBOTCV_REFLECT三种填充方式。
+          当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行填充。
+          当type为HOBOTCV_REPLICATE时，使用原图中最边界的像素值进行填充(例如：例如：aaaaaa|abcdefgh|hhhhhhh)。
+          当type为HOBOTCV_REFLECT时，以原图边界为轴的镜像填充(例如：fedcba|abcdefgh|hgfedcb)
+          padding后的图片高h = src_h + area.top + area.bottom, 图片宽w = src_w + area.left + area.right
+          padding成功后，通过返回值返回padding后的图片数据指针。
+
+返回值：成功返回输出图片数据指针，失败返回nullptr
+
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 原nv12格式的图像数据 |
+| src_h    | 原图高              |
+| src_w    | 原图宽              |
+| type     | 填充方式            |
+| area     | 填充区域，支持指定上下左右区域 |
+| value    | 填充的像素值，取值0~255，默认为0 |
 
 ### 高斯滤波(BPU加速)
 
@@ -394,6 +417,47 @@ crop&resize&rotate效果展示:
 
 pyramid缩小效果展示,每层为上一层的1/2：
 ![image](./imgs/pym/pym_ds.jpg)
+
+### padding
+example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
+输出结果：
+```
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [padding_example-1]: process started with pid [219943]
+[padding_example-1] [INFO] [1666363731.418628584] [example]: 480 x 270 hobot_cv constant padding  top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363731.458502459] [example]: 480 x 270 hobot_cv replicate padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363731.493979875] [example]: 480 x 270 hobot_cv reflect padding top:100 bottom: 100 left: 100 right: 100, time cost: 3 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363731.531334959] [example]: 480 x 270 opencv constant padding top:100 bottom: 100 left: 100 right: 100, time cost: 2 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363731.562557334] [example]: 480 x 270 opencv replicate padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
+[padding_example-1]
+[padding_example-1] [INFO] [1666363731.594738500] [example]: 480 x 270 opencv reflect padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
+[padding_example-1]
+[INFO] [padding_example-1]: process has finished cleanly [pid 219943]
+```
+
+根据log显示，测试程序完成了对本地480x270分辨率图片的上下左右区域各填充100长度，
+hobot_cv三种填充方式与分别对应的opencv填充耗时对比如下
+|    填充方式     | hobot_cv耗时 | opencv耗时 |
+|  ------------- | ------------ | ---------- |
+|   CONSTANT     |    1ms       |    2ms     |
+|   REPLICATE    |    1ms       |    1ms     |
+|   REFLECT      |    3ms       |    1ms     |
+
+原图展示：
+![image](./config/480x270.jpg)
+
+HOBOTCV_CONSTANT方式填充展示：
+![image](./imgs/cv_constant_padding.jpg)
+
+HOBOTCV_REPLICATE方式填充展示：
+![image](./imgs/cv_replicate_padding.jpg)
+
+HOBOTCV_REFLECT方式填充展示：
+![image](./imgs/cv_reflect_padding.jpg)
 
 ### 高斯滤波bpu加速
 

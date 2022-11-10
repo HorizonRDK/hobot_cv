@@ -29,6 +29,265 @@
 
 namespace hobot_cv {
 
+bool check_padding_area(uint32_t top,
+                        uint32_t bottom,
+                        uint32_t left,
+                        uint32_t right) {
+  if (top == 0 && bottom == 0 && left == 0 && right == 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"), "No padding area!");
+    return false;
+  } else if (top % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid top size: %d! Padding size must be even");
+    return false;
+  } else if (bottom % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid bottom size: %d! Padding size must be even");
+    return false;
+  } else if (left % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid left size: %d! Padding size must be even");
+    return false;
+  } else if (right % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                 "Invalid right size: %d! Padding size must be even");
+    return false;
+  }
+  return true;
+}
+
+std::unique_ptr<char[]> hobotcv_constant_padding(const char *src,
+                                                 const int &src_h,
+                                                 const int &src_w,
+                                                 uint32_t top,
+                                                 uint32_t bottom,
+                                                 uint32_t left,
+                                                 uint32_t right,
+                                                 uint8_t value) {
+  // value转成yuv值
+  uint8_t value_y = value;
+  uint8_t value_u = 128;
+  uint8_t value_v = 128;
+
+  uint32_t dst_w = src_w + left + right;
+  uint32_t dst_h = src_h + top + bottom;
+  uint32_t dst_y_size = dst_w * dst_h;
+  uint32_t dst_uv_size = dst_w * dst_h / 2;
+  size_t dst_size = dst_y_size + dst_uv_size;
+  std::unique_ptr<char[]> unique(new char[dst_size]);
+  auto dst = unique.get();
+  char *dst_y = dst;
+  char *dst_uv = dst + dst_y_size;
+
+  // padding y
+  for (uint32_t h = 0; h < dst_h; ++h) {
+    if (h < top || h >= src_h + top) {
+      auto *raw = dst_y + h * dst_w;
+      memset(raw, value_y, dst_w);
+    } else {
+      // padding left
+      auto *raw = dst_y + h * dst_w;
+      memset(raw, value_y, left);
+      // copy src
+      raw = dst_y + h * dst_w + left;
+      auto *src_y_raw = src + (h - top) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+      // padding right
+      raw = dst_y + h * dst_w + left + src_w;
+      memset(raw, value_y, right);
+    }
+  }
+
+  // padding uv
+  auto *src_uv_data = src + src_h * src_w;
+  for (uint32_t h = 0; h < dst_h / 2; ++h) {
+    auto *raw = dst_uv + h * dst_w;
+    if ((h < (top / 2)) || (h >= (src_h + top) / 2)) {
+      for (uint32_t w = 0; w < dst_w; w += 2) {
+        *(raw + w) = value_u;
+        *(raw + w + 1) = value_v;
+      }
+    } else {
+      auto *raw = dst_uv + h * dst_w;
+      for (uint32_t w = 0; w < left; w += 2) {
+        *(raw + w) = value_u;
+        *(raw + w + 1) = value_v;
+      }
+      raw = dst_uv + h * dst_w + left;
+      auto *src_uv_raw = src_uv_data + (h - (top / 2)) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+      raw = dst_uv + h * dst_w + left + src_w;
+      for (uint32_t w = 0; w < right; w += 2) {
+        *(raw + w) = value_u;
+        *(raw + w + 1) = value_v;
+      }
+    }
+  }
+
+  return unique;
+}
+
+std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
+                                                  const int &src_h,
+                                                  const int &src_w,
+                                                  uint32_t top,
+                                                  uint32_t bottom,
+                                                  uint32_t left,
+                                                  uint32_t right) {
+  uint32_t dst_w = src_w + left + right;
+  uint32_t dst_h = src_h + top + bottom;
+  int dst_y_size = dst_w * dst_h;
+  size_t dst_size = dst_h * dst_w * 3 / 2;
+  std::unique_ptr<char[]> unique(new char[dst_size]);
+  auto dst = unique.get();
+  char *dst_y = dst;
+  char *dst_uv = dst + dst_y_size;
+  auto *src_uv = src + src_h * src_w;
+  uint32_t dst_bottom_start_line = src_h + top;
+  // padding top and bottom
+  for (uint32_t h = 0; h < dst_h; ++h) {  // padding y
+    auto *raw = dst_y + h * dst_w + left;
+    if (h < top) {  // padding top
+      memcpy(raw, src, src_w);
+    } else if (h >= dst_bottom_start_line) {  // padding bottom
+      auto *src_y_raw = src + (src_h - 1) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    } else {  // copy src
+      auto *src_y_raw = src + (h - top) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    }
+  }
+
+  for (uint32_t h = 0; h < dst_h / 2; ++h) {  // padding uv
+    auto *raw = dst_uv + h * dst_w + left;
+    if (h < (top / 2)) {  // top
+      memcpy(raw, src_uv, src_w);
+    } else if (h >= (dst_bottom_start_line / 2)) {  // bottom
+      auto *src_uv_raw = src_uv + ((src_h / 2) - 1) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    } else {  // copy src
+      auto *src_uv_raw = src_uv + (h - (top / 2)) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    }
+  }
+
+  // padding left and right
+  for (uint32_t h = 0; h < dst_h; ++h) {
+    // padding left
+    auto *dst_left_y = dst_y + h * dst_w;
+    auto *dst_left_uv = dst_uv + (h / 2) * dst_w;
+    auto *src_left_y = dst_y + h * dst_w + left;
+    auto *src_left_uv = dst_uv + (h / 2) * dst_w + left;
+    uint16_t *src_left_uv_16 = (uint16_t *)(src_left_uv);
+    memset(dst_left_y, *src_left_y, left);
+    for (uint32_t w = 0; w < left; w += 2) {
+      uint16_t *dst_16 = (uint16_t *)(dst_left_uv + w);
+      *dst_16 = *src_left_uv_16;
+    }
+    // padding right
+    auto *dst_right_y = dst_y + h * dst_w + left + src_w;
+    auto *dst_right_uv = dst_uv + (h / 2) * dst_w + left + src_w;
+    auto *src_right_y = dst_y + h * dst_w + left + src_w - 1;
+    auto *src_right_uv = dst_uv + (h / 2) * dst_w + left + src_w - 2;
+
+    uint16_t *src_right_uv_16 = (uint16_t *)(src_right_uv);
+    memset(dst_right_y, *src_right_y, right);
+    for (uint32_t w = 0; w < right; w += 2) {
+      uint16_t *dst_16 = (uint16_t *)(dst_right_uv + w);
+      *dst_16 = *src_right_uv_16;
+    }
+  }
+
+  return unique;
+}
+
+std::unique_ptr<char[]> hobotcv_reflect_padding(const char *src,
+                                                const int &src_h,
+                                                const int &src_w,
+                                                uint32_t top,
+                                                uint32_t bottom,
+                                                uint32_t left,
+                                                uint32_t right) {
+  uint32_t dst_w = src_w + left + right;
+  uint32_t dst_h = src_h + top + bottom;
+  int dst_y_size = dst_w * dst_h;
+  size_t dst_size = dst_h * dst_w * 3 / 2;
+  std::unique_ptr<char[]> unique(new char[dst_size]);
+  auto dst = unique.get();
+  char *dst_y = dst;
+  char *dst_uv = dst + dst_y_size;
+  auto *src_uv = src + src_h * src_w;
+  uint32_t dst_bottom_start_line = src_h + top;
+  // padding top and bottom
+  int index_top = top, index_bottom = bottom;
+  for (uint32_t h = 0; h < dst_h; ++h) {  // padding y
+    auto *raw = dst_y + h * dst_w + left;
+    if (h < top) {  // padding top
+      auto *src_y_raw = src + index_top * src_w;
+      memcpy(raw, src_y_raw, src_w);
+      index_top--;
+    } else if (h >= dst_bottom_start_line) {  // padding bottom
+      auto *src_y_raw = src + (src_h - bottom + index_bottom - 1) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+      index_bottom--;
+    } else {  // copy src
+      auto *src_y_raw = src + (h - top) * src_w;
+      memcpy(raw, src_y_raw, src_w);
+    }
+  }
+
+  index_top = top / 2;
+  index_bottom = bottom / 2;
+  for (uint32_t h = 0; h < dst_h / 2; ++h) {  // padding uv
+    auto *raw = dst_uv + h * dst_w + left;
+    if (h < (top / 2)) {  // top
+      auto *src_uv_raw = src_uv + index_top * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+      index_top--;
+    } else if (h >= (dst_bottom_start_line / 2)) {  // bottom
+      auto *src_uv_raw =
+          src_uv + ((src_h / 2) - (bottom / 2) + index_bottom - 1) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+      index_bottom--;
+    } else {  // copy src
+      auto *src_uv_raw = src_uv + (h - (top / 2)) * src_w;
+      memcpy(raw, src_uv_raw, src_w);
+    }
+  }
+
+  // padding left and right
+  for (uint32_t h = 0; h < dst_h; ++h) {
+    // padding left
+    auto *dst_left_y = dst_y + h * dst_w;
+    auto *dst_left_uv = dst_uv + (h / 2) * dst_w;
+    auto *src_left_y = dst_y + h * dst_w + left;
+    auto *src_left_uv = dst_uv + (h / 2) * dst_w + left;
+    for (uint32_t w = 0; w < left; w++) {
+      *(dst_left_y + w) = *(src_left_y + left - w);
+      if (w % 2 == 0) {
+        uint16_t *dst_16 = (uint16_t *)(dst_left_uv + w);
+        uint16_t *src_left_uv_16 = (uint16_t *)(src_left_uv + left - w);
+        *dst_16 = *src_left_uv_16;
+      }
+    }
+    // padding right
+    auto *dst_right_y = dst_y + h * dst_w + left + src_w;
+    auto *dst_right_uv = dst_uv + (h / 2) * dst_w + left + src_w;
+    auto *src_right_y = dst_y + h * dst_w + left + src_w - 1;
+    auto *src_right_uv = dst_uv + (h / 2) * dst_w + left + src_w - 2;
+    for (uint32_t w = 0; w < right; w++) {
+      *(dst_right_y + w) = *(src_right_y - w);
+      if (w % 2 == 0) {
+        uint16_t *dst_16 = (uint16_t *)(dst_right_uv + w);
+        uint16_t *src_right_uv_16 = (uint16_t *)(src_right_uv - w);
+        *dst_16 = *src_right_uv_16;
+      }
+    }
+  }
+
+  return unique;
+}
+
 hobotcv_front::hobotcv_front() {
   group_id = -1;
   roi.cropEnable = 0;
@@ -559,8 +818,10 @@ int hobotcv_front::createGroup() {
   grp_attr.frameDepth = 1;
   auto ret = HB_VPS_CreateGrp(group_id, &grp_attr);
   if (0 != ret) {
-    RCLCPP_ERROR(
-        rclcpp::get_logger("hobot_cv"), "create group: %d failed!!", group_id);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "create group: %d failed! ret: %d",
+                 group_id,
+                 ret);
     return -1;
   }
 
@@ -578,7 +839,8 @@ int hobotcv_front::createGroup() {
   HB_SYS_Alloc(
       &(sys_mem.mmz_paddr[1]), (void **)&(sys_mem.mmz_vaddr[1]), alloclen);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "HB_SYS_Alloc failed! ret: %d", ret);
     return ret;
   }
   std::unique_lock<std::mutex> lk(observe->group_map_mtx);
@@ -594,8 +856,10 @@ int hobotcv_front::createGroup() {
 
   ret = HB_VPS_StartGrp(group_id);
   if (0 != ret) {
-    RCLCPP_ERROR(
-        rclcpp::get_logger("hobot_cv"), "StartGrp: %d failed!!", group_id);
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "StartGrp: %d failed! ret: %d",
+                 group_id,
+                 ret);
     return -1;
   }
   return 0;
@@ -610,7 +874,8 @@ int hobotcv_front::setChannelAttr(int enscale) {
   chn_attr.frameDepth = 1;
   int ret = HB_VPS_SetChnAttr(group_id, channel_id, &chn_attr);
   if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SetChnAttr failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "SetChnAttr failed! ret: %d", ret);
     return ret;
   }
   return 0;
@@ -629,7 +894,8 @@ int hobotcv_front::setChannelRotate() {
   }
   int ret = HB_VPS_SetChnRotate(group_id, channel_id, hb_rotate);
   if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SetChnRotate failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "SetChnRotate failed! ret: %d", ret);
     return ret;
   }
   return 0;
@@ -654,7 +920,8 @@ int hobotcv_front::setChannelPyramidAttr() {
 
   auto ret = HB_VPS_SetPymChnAttr(group_id, channel_id, &pym_chn_attr);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "set pym chn failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "set pym chn failed!ret: %d", ret);
     return -1;
   }
   return 0;
@@ -706,7 +973,8 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
   auto ret = HB_VPS_SendFrame(group_id, &feedback_buf, 1000);
   lk.unlock();
   if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "SendFrame failed!!");
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"), "SendFrame failed! ret: %d", ret);
     return ret;
   }
   return 0;
@@ -717,9 +985,10 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
   int ret = HB_VPS_GetChnFrame(group_id, channel_id, &out_buf, 2000);
   if (ret != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "get group: %d chn: %d frame failed!!",
+                 "get group: %d chn: %d frame failed! ret: %d",
                  group_id,
-                 channel_id);
+                 channel_id,
+                 ret);
     group_sem_post();
     return -1;
   }
@@ -792,6 +1061,11 @@ int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {
     HB_VPS_DisableChn(group_id, channel_id);
   } else {
     pymOut->isSuccess = false;
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "group: %d chn: %d get frame failed! ret: %d",
+                 group_id,
+                 channel_id,
+                 ret);
   }
 
   group_sem_post();
@@ -860,11 +1134,13 @@ int hobotcv_front::groupChn1Init(int group_id, int max_w, int max_h) {
   chn_attr_max.frameDepth = 1;
   auto ret = HB_VPS_SetChnAttr(group_id, 1, &chn_attr_max);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn1Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"),
+        "group: %d Chn1Init failed! ret: %d chn_width: %d chn_height: %d",
+        group_id,
+        ret,
+        chn_attr_max.width,
+        chn_attr_max.height);
   }
   return 0;
 }
@@ -878,11 +1154,13 @@ int hobotcv_front::groupChn2Init(int group_id, int max_w, int max_h) {
   chn_attr_max.frameDepth = 1;
   auto ret = HB_VPS_SetChnAttr(group_id, 2, &chn_attr_max);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn2Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"),
+        "group: %d Chn2Init failed! ret: %d chn_width: %d chn_height: %d",
+        group_id,
+        ret,
+        chn_attr_max.width,
+        chn_attr_max.height);
   }
   return 0;
 }
@@ -899,11 +1177,13 @@ int hobotcv_front::groupChn5Init(int group_id, int max_w, int max_h) {
   chn_attr_max.frameDepth = 1;
   auto ret = HB_VPS_SetChnAttr(group_id, 5, &chn_attr_max);
   if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d Chn5Init failed! chn_width: %d chn_height: %d",
-                 group_id,
-                 chn_attr_max.width,
-                 chn_attr_max.height);
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv"),
+        "group: %d Chn5Init failed! ret: %d chn_width: %d chn_height: %d",
+        group_id,
+        ret,
+        chn_attr_max.width,
+        chn_attr_max.height);
   }
   return 0;
 }
@@ -955,8 +1235,9 @@ int hobotcv_front::groupPymChnInit(int group_id, int max_w, int max_h) {
   auto ret = HB_VPS_SetPymChnAttr(group_id, pym_channel, &pym_chn_attr);
   if (ret != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "group: %d pymChnInit failed!",
-                 group_id);
+                 "group: %d pymChnInit failed! ret: %d",
+                 group_id,
+                 ret);
     return -1;
   }
   int group_index = group_id - HOBOTCV_GROUP_BEGIN;

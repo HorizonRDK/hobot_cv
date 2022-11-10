@@ -18,6 +18,43 @@
 
 namespace hobot_cv {
 
+// hobotcv padding功能填充区域合规检查
+bool check_padding_area(uint32_t top,
+                        uint32_t bottom,
+                        uint32_t left,
+                        uint32_t right);
+
+/* hobotcv constant填充方式，用传入的value填充，
+成功返回填充后图片数据，失败返回nullptr*/
+std::unique_ptr<char[]> hobotcv_constant_padding(const char *src,
+                                                 const int &src_h,
+                                                 const int &src_w,
+                                                 uint32_t top,
+                                                 uint32_t bottom,
+                                                 uint32_t left,
+                                                 uint32_t right,
+                                                 uint8_t value);
+
+/* hobotcv replicate填充方式，复制最边界像素填充
+成功返回填充后图片数据，失败返回nullptr*/
+std::unique_ptr<char[]> hobotcv_replicate_padding(const char *src,
+                                                  const int &src_h,
+                                                  const int &src_w,
+                                                  uint32_t top,
+                                                  uint32_t bottom,
+                                                  uint32_t left,
+                                                  uint32_t right);
+
+/* hobotcv reflect填充方式，已原图边界为轴镜像填充
+成功返回填充后图片数据，失败返回nullptr*/
+std::unique_ptr<char[]> hobotcv_reflect_padding(const char *src,
+                                                const int &src_h,
+                                                const int &src_w,
+                                                uint32_t top,
+                                                uint32_t bottom,
+                                                uint32_t left,
+                                                uint32_t right);
+
 class hobotcv_front {
  public:
   explicit hobotcv_front();
