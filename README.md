@@ -423,32 +423,32 @@ example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
 输出结果：
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [padding_example-1]: process started with pid [74124]
-[padding_example-1] [INFO] [1666360239.972091835] [example]: 512 x 512 hobot_cv constant padding  top:150 bottom: 150 left: 150 right: 150, time cost: 4 ms
+[INFO] [padding_example-1]: process started with pid [219943]
+[padding_example-1] [INFO] [1666363731.418628584] [example]: 480 x 270 hobot_cv constant padding  top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
 [padding_example-1]
-[padding_example-1] [INFO] [1666360240.051457335] [example]: 512 x 512 hobot_cv replicate padding top:150 bottom: 150 left: 150 right: 150, time cost: 3 ms
+[padding_example-1] [INFO] [1666363731.458502459] [example]: 480 x 270 hobot_cv replicate padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
 [padding_example-1]
-[padding_example-1] [INFO] [1666360240.124759335] [example]: 512 x 512 hobot_cv reflect padding top:150 bottom: 150 left: 150 right: 150, time cost: 8 ms
+[padding_example-1] [INFO] [1666363731.493979875] [example]: 480 x 270 hobot_cv reflect padding top:100 bottom: 100 left: 100 right: 100, time cost: 3 ms
 [padding_example-1]
-[padding_example-1] [INFO] [1666360240.201331919] [example]: 512 x 512 opencv constant padding top:150 bottom: 150 left: 150 right: 150, time cost: 3 ms
+[padding_example-1] [INFO] [1666363731.531334959] [example]: 480 x 270 opencv constant padding top:100 bottom: 100 left: 100 right: 100, time cost: 2 ms
 [padding_example-1]
-[padding_example-1] [INFO] [1666360240.270128544] [example]: 512 x 512 opencv replicate padding top:150 bottom: 150 left: 150 right: 150, time cost: 3 ms
+[padding_example-1] [INFO] [1666363731.562557334] [example]: 480 x 270 opencv replicate padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
 [padding_example-1]
-[padding_example-1] [INFO] [1666360240.339071544] [example]: 512 x 512 opencv reflect padding top:150 bottom: 150 left: 150 right: 150, time cost: 4 ms
+[padding_example-1] [INFO] [1666363731.594738500] [example]: 480 x 270 opencv reflect padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
 [padding_example-1]
-[INFO] [padding_example-1]: process has finished cleanly [pid 74124]
+[INFO] [padding_example-1]: process has finished cleanly [pid 219943]
 ```
 
-根据log显示，测试程序完成了对本地512x512分辨率图片的上下左右区域各填充150长度，
+根据log显示，测试程序完成了对本地480x270分辨率图片的上下左右区域各填充100长度，
 hobot_cv三种填充方式与分别对应的opencv填充耗时对比如下
 |    填充方式     | hobot_cv耗时 | opencv耗时 |
 |  ------------- | ------------ | ---------- |
-|   CONSTANT     |    4ms       |    3ms     |
-|   REPLICATE    |    3ms       |    3ms     |
-|   REFLECT      |    8ms       |    4ms     |
+|   CONSTANT     |    1ms       |    2ms     |
+|   REPLICATE    |    1ms       |    1ms     |
+|   REFLECT      |    3ms       |    1ms     |
 
 原图展示：
-![image](./config/512x512.jpg)
+![image](./config/480x270.jpg)
 
 HOBOTCV_CONSTANT方式填充展示：
 ![image](./imgs/cv_constant_padding.jpg)

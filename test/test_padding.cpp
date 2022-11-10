@@ -31,7 +31,7 @@ void writeImg(cv::Mat &mat, std::string imgfile) {
 }
 
 int main() {
-  std::string image_file = "config/512x512.jpg";
+  std::string image_file = "config/480x270.jpg";
   cv::Mat bgr_mat = cv::imread(image_file, cv::IMREAD_COLOR);
   auto src_height = bgr_mat.rows;
   auto src_width = bgr_mat.cols;
@@ -40,10 +40,10 @@ int main() {
   BGRToNv12(bgr_mat, srcmat_nv12);
 
   hobot_cv::PaddingArea paddingArea;
-  paddingArea.top = 150;
-  paddingArea.left = 150;
-  paddingArea.right = 150;
-  paddingArea.bottom = 150;
+  paddingArea.top = 100;
+  paddingArea.left = 100;
+  paddingArea.right = 100;
+  paddingArea.bottom = 100;
 
   auto dst_height = src_height + paddingArea.top + paddingArea.bottom;
   auto dst_width = src_width + paddingArea.left + paddingArea.right;
