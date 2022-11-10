@@ -38,13 +38,15 @@ int main() {
 
   cv::Mat srcmat_nv12;
   BGRToNv12(bgr_mat, srcmat_nv12);
-  auto dst_height = src_height + 40;
-  auto dst_width = src_width + 40;
+
   hobot_cv::PaddingArea paddingArea;
-  paddingArea.top = 20;
-  paddingArea.left = 20;
-  paddingArea.right = 20;
-  paddingArea.bottom = 20;
+  paddingArea.top = 60;
+  paddingArea.left = 60;
+  paddingArea.right = 60;
+  paddingArea.bottom = 60;
+
+  auto dst_height = src_height + paddingArea.top + paddingArea.bottom;
+  auto dst_width = src_width + paddingArea.left + paddingArea.right;
 
   {  // constant
     auto before_padding = std::chrono::system_clock::now();
@@ -62,7 +64,7 @@ int main() {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
-          << " hobot_cv constant padding top: 20 bottom: 20 left: 20 right: 20"
+          << " hobot_cv constant padding top: 60 bottom: 60 left: 60 right: 60"
           << ", time cost: " << interval << " ms"
           << "\n";
       RCLCPP_INFO(
@@ -89,7 +91,7 @@ int main() {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
-          << " hobot_cv replicate padding top: 20 bottom: 20 left: 20 right: 20"
+          << " hobot_cv replicate padding top: 60 bottom: 60 left: 60 right: 60"
           << ", time cost: " << interval << " ms"
           << "\n";
       RCLCPP_INFO(
@@ -116,7 +118,7 @@ int main() {
       std::stringstream ss_padding;
       ss_padding
           << src_width << " x " << src_height
-          << " hobot_cv reflect padding top: 20 bottom: 20 left: 20 right: 20"
+          << " hobot_cv reflect padding top: 60 bottom: 60 left: 60 right: 60"
           << ", time cost: " << interval << " ms"
           << "\n";
       RCLCPP_INFO(
@@ -130,7 +132,7 @@ int main() {
   {  // opencv constant
     cv::Mat dst_mat;
     auto before_padding = std::chrono::system_clock::now();
-    cv::copyMakeBorder(bgr_mat, dst_mat, 20, 20, 20, 20, cv::BORDER_CONSTANT);
+    cv::copyMakeBorder(bgr_mat, dst_mat, 60, 60, 60, 60, cv::BORDER_CONSTANT);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
@@ -138,7 +140,7 @@ int main() {
     std::stringstream ss_padding;
     ss_padding
         << src_width << " x " << src_height
-        << " opencv constant padding top: 20 bottom: 20 left: 20 right: 20"
+        << " opencv constant padding top: 60 bottom: 60 left: 60 right: 60"
         << ", time cost: " << interval << " ms"
         << "\n";
     RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
@@ -148,7 +150,7 @@ int main() {
   {  // opencv REPLICATE
     cv::Mat dst_mat;
     auto before_padding = std::chrono::system_clock::now();
-    cv::copyMakeBorder(bgr_mat, dst_mat, 20, 20, 20, 20, cv::BORDER_REPLICATE);
+    cv::copyMakeBorder(bgr_mat, dst_mat, 60, 60, 60, 60, cv::BORDER_REPLICATE);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
@@ -156,7 +158,7 @@ int main() {
     std::stringstream ss_padding;
     ss_padding
         << src_width << " x " << src_height
-        << " opencv replicate padding top: 20 bottom: 20 left: 20 right: 20"
+        << " opencv replicate padding top: 60 bottom: 60 left: 60 right: 60"
         << ", time cost: " << interval << " ms"
         << "\n";
     RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
@@ -166,7 +168,7 @@ int main() {
   {  // opencv REFLECT
     cv::Mat dst_mat;
     auto before_padding = std::chrono::system_clock::now();
-    cv::copyMakeBorder(bgr_mat, dst_mat, 20, 20, 20, 20, cv::BORDER_REFLECT);
+    cv::copyMakeBorder(bgr_mat, dst_mat, 60, 60, 60, 60, cv::BORDER_REFLECT);
     auto after_padding = std::chrono::system_clock::now();
     auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
                         after_padding - before_padding)
@@ -174,7 +176,7 @@ int main() {
     std::stringstream ss_padding;
     ss_padding
         << src_width << " x " << src_height
-        << " opencv reflect padding top: 20 bottom: 20 left: 20 right: 20"
+        << " opencv reflect padding top: 60 bottom: 60 left: 60 right: 60"
         << ", time cost: " << interval << " ms"
         << "\n";
     RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_padding.str().c_str());
