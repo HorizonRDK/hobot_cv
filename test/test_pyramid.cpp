@@ -97,6 +97,37 @@ int main() {
       RCLCPP_INFO(
           rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
     }
+
+    usleep(30000);
+    // nv12 interface pyramid
+    before_pyramid = std::chrono::system_clock::now();
+    ret = hobot_cv::hobotcv_pymscale(srcmat_nv12, pymout, attr);
+    after_pyramid = std::chrono::system_clock::now();
+    interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                   after_pyramid - before_pyramid)
+                   .count();
+    if (ret == 0) {
+      std::stringstream ss_pyramid;
+      ss_pyramid << "nv12 interface pyramid image "
+                 << ", time cost: " << interval << " ms"
+                 << "\n";
+      RCLCPP_INFO(
+          rclcpp::get_logger("example"), "%s", ss_pyramid.str().c_str());
+
+      for (int i = 0; i < 24; ++i) {
+        int width = pymout->pym_out[i].width;
+        int height = pymout->pym_out[i].height;
+        if (width != 0 || height != 0) {
+          cv::Mat dstmat(height * 3 / 2, width, CV_8UC1);
+          memcpy(dstmat.data,
+                 &(pymout->pym_out[i].img[0]),
+                 width * height * 3 / 2);
+          std::stringstream ss;
+          ss << "./nv12_interface_ds_base_" << i << ".jpg";
+          writeImg(dstmat, ss.str().c_str());
+        }
+      }
+    }
     delete pymout;
   }
 

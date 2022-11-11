@@ -288,6 +288,121 @@ std::unique_ptr<char[]> hobotcv_reflect_padding(const char *src,
   return unique;
 }
 
+int hobotcv_vps_resize(const cv::Mat &src,
+                       cv::Mat &dst,
+                       int dst_h,
+                       int dst_w,
+                       const cv::Range &rowRange,
+                       const cv::Range &colRange) {
+  int src_h = src.rows * 2 / 3;
+  int src_w = src.cols;
+
+  hobotcv_front hobotcv;
+  int ret =
+      hobotcv.prepareCropRoi(src_h, src_w, dst_w, dst_h, rowRange, colRange);
+  if (ret != 0) {
+    return -1;
+  }
+
+  ret = hobotcv.prepareResizeParam(src_w, src_h, dst_w, dst_h);
+  if (0 != ret) {
+    return -1;
+  }
+
+  if (hobotcv.roi.height == dst_h && hobotcv.roi.width == dst_w) {  // only crop
+    auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
+    dst = cv::Mat(dst_h * 3 / 2, dst_w, CV_8UC1);
+    auto dstdata = dst.data;
+    // copy y
+    for (int h = 0; h < dst_h; ++h) {
+      auto *raw = dstdata + h * dst_w;
+      auto *src = srcdata + (h + hobotcv.roi.y) * src_w + hobotcv.roi.x;
+      memcpy(raw, src, dst_w);
+    }
+
+    // copy uv
+    auto uv_data = srcdata + src_h * src_w;
+    auto dstuvdata = dstdata + dst_h * dst_w;
+    for (int32_t h = 0; h < dst_h / 2; ++h) {
+      auto *raw = dstuvdata + h * dst_w;
+      auto *src = uv_data + (h + (hobotcv.roi.y / 2)) * src_w + hobotcv.roi.x;
+      memcpy(raw, src, dst_w);
+    }
+    return 0;
+  }
+
+  ret = hobotcv.groupScheduler();
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.sendVpsFrame(
+      reinterpret_cast<const char *>(src.data), src_h, src_w);
+  if (ret != 0) {
+    return -1;
+  }
+  ret = hobotcv.getChnFrame(dst);
+  if (ret != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+hbSysMem *hobotcv_vps_resize(const char *src,
+                             const int src_h,
+                             const int src_w,
+                             int &dst_h,
+                             int &dst_w,
+                             const cv::Range &rowRange,
+                             const cv::Range &colRange) {
+  hobotcv_front hobotcv;
+  int ret =
+      hobotcv.prepareCropRoi(src_h, src_w, dst_w, dst_h, rowRange, colRange);
+  if (ret != 0) {
+    return nullptr;
+  }
+
+  ret = hobotcv.prepareResizeParam(src_w, src_h, dst_w, dst_h);
+  if (0 != ret) {
+    return nullptr;
+  }
+
+  if (hobotcv.roi.height == dst_h && hobotcv.roi.width == dst_w) {  // only crop
+    auto srcdata = reinterpret_cast<const uint8_t *>(src);
+    int dst_size = dst_w * dst_h * 3 / 2;
+    auto *out_data = new hbSysMem;
+    hbSysAllocCachedMem(out_data, dst_size);
+    auto dstdata = reinterpret_cast<char *>(out_data->virAddr);
+    // copy y
+    for (int h = 0; h < dst_h; ++h) {
+      auto *raw = dstdata + h * dst_w;
+      auto *src_y = srcdata + (h + hobotcv.roi.y) * src_w + hobotcv.roi.x;
+      memcpy(raw, src_y, dst_w);
+    }
+
+    // copy uv
+    auto uv_data = srcdata + src_h * src_w;
+    auto dstuvdata = dstdata + dst_h * dst_w;
+    for (int32_t h = 0; h < dst_h / 2; ++h) {
+      auto *raw = dstuvdata + h * dst_w;
+      auto *src_uv =
+          uv_data + (h + (hobotcv.roi.y / 2)) * src_w + hobotcv.roi.x;
+      memcpy(raw, src_uv, dst_w);
+    }
+    hbSysFlushMem(out_data, HB_SYS_MEM_CACHE_CLEAN);
+    return out_data;
+  }
+
+  ret = hobotcv.groupScheduler();
+  if (ret != 0) {
+    return nullptr;
+  }
+  ret = hobotcv.sendVpsFrame(src, src_h, src_w);
+  if (ret != 0) {
+    return nullptr;
+  }
+  return hobotcv.getChnFrame(dst_h, dst_w);
+}
+
 hobotcv_front::hobotcv_front() {
   group_id = -1;
   roi.cropEnable = 0;
@@ -927,12 +1042,12 @@ int hobotcv_front::setChannelPyramidAttr() {
   return 0;
 }
 
-int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
-  int input_w = src.cols;
-  int input_h = src.rows * 2 / 3;
+int hobotcv_front::sendVpsFrame(const char *src, int src_h, int src_w) {
+  int input_w = src_w;
+  int input_h = src_h;
   std::unique_lock<std::mutex> lk(observe->group_map_mtx);
   if (roi.cropEnable == 1) {  // crop区域作为vps输入源
-    auto srcdata = reinterpret_cast<const uint8_t *>(src.data);
+    auto srcdata = reinterpret_cast<const uint8_t *>(src);
     // copy y
     for (int h = 0; h < roi.height; ++h) {
       auto *raw =
@@ -949,7 +1064,7 @@ int hobotcv_front::sendVpsFrame(const cv::Mat &src) {
       memcpy(raw, src, roi.width);
     }
   } else {
-    auto ydata = reinterpret_cast<const uint8_t *>(src.data);
+    auto ydata = reinterpret_cast<const uint8_t *>(src);
     auto uvdata = ydata + src_h * src_w;
     memcpy(
         observe->GetGroupSysmem(group_id).mmz_vaddr[0], ydata, src_h * src_w);
@@ -1007,6 +1122,35 @@ int hobotcv_front::getChnFrame(cv::Mat &dst) {
   HB_VPS_DisableChn(group_id, channel_id);
   group_sem_post();
   return 0;
+}
+
+hbSysMem *hobotcv_front::getChnFrame(int &dst_h, int &dst_w) {
+  hb_vio_buffer_t out_buf;
+  int ret = HB_VPS_GetChnFrame(group_id, channel_id, &out_buf, 2000);
+  if (ret != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
+                 "get group: %d chn: %d frame failed! ret: %d",
+                 group_id,
+                 channel_id,
+                 ret);
+    group_sem_post();
+    return nullptr;
+  }
+
+  int stride = out_buf.img_addr.stride_size;
+  dst_w = out_buf.img_addr.width;
+  dst_h = out_buf.img_addr.height;
+  int dst_size = dst_w * dst_h * 3 / 2;
+
+  auto *out_data = new hbSysMem;
+  hbSysAllocCachedMem(out_data, dst_size);
+  copyOutputImage(stride, dst_w, dst_h, out_buf.img_addr, out_data->virAddr);
+  hbSysFlushMem(out_data, HB_SYS_MEM_CACHE_CLEAN);
+
+  HB_VPS_ReleaseChnFrame(group_id, channel_id, &out_buf);
+  HB_VPS_DisableChn(group_id, channel_id);
+  group_sem_post();
+  return out_data;
 }
 
 int hobotcv_front::getPyramidOutputImage(OutputPyramid *pymOut) {

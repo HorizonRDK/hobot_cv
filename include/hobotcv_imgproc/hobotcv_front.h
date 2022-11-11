@@ -55,6 +55,21 @@ std::unique_ptr<char[]> hobotcv_reflect_padding(const char *src,
                                                 uint32_t left,
                                                 uint32_t right);
 
+int hobotcv_vps_resize(const cv::Mat &src,
+                       cv::Mat &dst,
+                       int dst_h,
+                       int dst_w,
+                       const cv::Range &rowRange,
+                       const cv::Range &colRange);
+
+hbSysMem *hobotcv_vps_resize(const char *src,
+                             const int src_h,
+                             const int src_w,
+                             int &dst_h,
+                             int &dst_w,
+                             const cv::Range &rowRange,
+                             const cv::Range &colRange);
+
 class hobotcv_front {
  public:
   explicit hobotcv_front();
@@ -82,9 +97,11 @@ class hobotcv_front {
 
   int setVpsChannelAttr();
 
-  int sendVpsFrame(const cv::Mat &src);
+  int sendVpsFrame(const char *src, int src_h, int src_w);
 
   int getChnFrame(cv::Mat &dst);
+
+  hbSysMem *getChnFrame(int &dst_h, int &dst_w);
 
   int getPyramidOutputImage(OutputPyramid *output);
 

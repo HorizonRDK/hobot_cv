@@ -82,7 +82,8 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
   如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发超时判断。
 
 ## 接口说明
-### crop&resize&rotate&pyramid
+
+### resize
 
 int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
@@ -101,6 +102,25 @@ int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h
 | dst_h  | resize后的高         |
 | dst_w  | resize后的宽         |
 | type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+
+std::shared_ptr<ImageInfo> hobotcv_resize(const char *src,int src_h,int src_w,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
+功能介绍：nv12格式图片的resize功能。输入输出图片数据为nv12数据的地址。
+
+返回值：成功返回resize后的图片数据地址，失败返回nullptr
+
+参数：
+
+| 参数名 | 解释                  |
+| ------ | -------------------- |
+| src    | 输入图片数据地址       |
+| src_h  | 输入图片高            |
+| sc_w   | 输入图片宽            |
+| dst_h  | resize后的高         |
+| dst_w  | resize后的宽         |
+| type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+
+### crop&resize
 
 cv::Mat hobotcv_crop(cv::Mat &src,int src_h,int src_w,int dst_h,int dst_w,const cv::Range& rowRange,const cv::Range& colRange,HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
@@ -122,6 +142,28 @@ cv::Mat hobotcv_crop(cv::Mat &src,int src_h,int src_w,int dst_h,int dst_w,const 
 | colRange | crop的横向坐标范围   |
 | type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
 
+std::shared_ptr<ImageInfo> hobotcv_crop(const char *src,int src_h,int src_w,int dst_h,int dst_w,const cv::Range &rowRange,const cv::Range &colRange,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+
+功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。输入输出图片数据为nv12数据的地址。
+
+返回值：成功返回crop&resize后的图片数据地址，失败返回nullptr
+
+注意：crop区域要在图片范围内
+
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 输入图片数据地址      |
+| src_h    | 输入图片高           |
+| sc_w     | 输入图片宽           |
+| dst_h    | resize后的高         |
+| dst_w    | resize后的宽         |
+| rowRange | crop的纵向坐标范围   |
+| colRange | crop的横向坐标范围   |
+| type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+
+### rotate
+
 int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
 
 功能介绍：将传入的图片进行旋转，只支持90，180，270度的旋转。采用vps加速。
@@ -134,6 +176,22 @@ int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
 | src      | 原nv12格式的图像矩阵 |
 | dst      | 旋转后的图像矩阵   |
 | rotate   | 旋转角度的枚举  |
+
+std::shared_ptr<ImageInfo> hobotcv_rotate(const char *src,int src_h,int src_w,ROTATION_E rotate);
+
+功能介绍：将传入的图片进行旋转，只支持90，180，270度的旋转。采用vps加速。输入输出图片数据为nv12数据的地址。
+
+返回值：成功返回旋转后的图片数据地址，失败返回nullptr
+
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 输入图片数据地址      |
+| src_h    | 输入图片高           |
+| src_w     | 输入图片宽           |
+| rotate   | 旋转角度             |
+
+### crop&resize&rotate
 
 int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION_E rotate,const cv::Range &rowRange,const cv::Range &colRange);
 
@@ -153,6 +211,28 @@ int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION
 | rotate   | 旋转角度的枚举，为0时关闭rotate  |
 | rowRange | crop的纵向坐标范围，范围为0时关闭crop|
 | colRange | crop的横向坐标范围，范围为0时关闭crop|
+
+std::shared_ptr<ImageInfo> hobotcv_imgproc(const char *src,int src_h,int src_w,int dst_h,int dst_w,ROTATION_E rotate,const cv::Range &rowRange,const cv::Range &colRange);
+
+功能介绍：crop，resize，rotate的全功能接口。先在原图中裁剪指定区域，然后缩放，最后旋转。采用vps加速。输入输出图片数据为nv12数据的地址。
+
+返回值：成功返回处理后的图片数据指针，失败返回nullptr
+
+注意：dst_h，dst_w是resize后的大小。无需考虑旋转后的宽高，接口会自动处理。例如，resize后的宽高为1920*1080，dst_w，dst_h传参分别为1920，1080。
+
+参数：
+| 参数名   | 解释                 |
+| -------- | -------------------- |
+| src      | 输入图片数据地址      |
+| src_h    | 输入图片高            |
+| src_w     | 输入图片宽           |
+| dst_h     | resize后的高         |
+| dst_w     | resize后的宽         |
+| rotate   | 旋转角度的枚举，为0时关闭rotate  |
+| rowRange | crop的纵向坐标范围，范围为0时关闭crop|
+| colRange | crop的横向坐标范围，范围为0时关闭crop|
+
+### pyramid
 
 int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
 
@@ -184,6 +264,21 @@ OutputPyramid：金字塔缩放图片输出数据结构
 | -------------| -----------------------------------|
 | isSuccess    | 接口处理图片是否成功，0：失败 1：成功 |
 | pym_out      | pyramid缩放输出图片信息的数组，每一层是否有输出取决于PyramidAttr中对该层的factor配置是否为0 |
+
+int hobotcv_pymscale(const char *src,int src_h,int src_w,OutputPyramid *output,const PyramidAttr &attr);
+
+功能介绍：金字塔缩放的功能接口。具体功能与上一个接口"int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr)"相同，区别在输入图片为nv12格式图片的数据地址。
+
+返回值：成功返回0，失败返回非零。
+
+参数：
+| 参数名   | 解释                 |
+| -------- | --------------------|
+| src      | 输入图片数据地址 |
+| src_h    | 输入图片高            |
+| src_w     | 输入图片宽           |
+| output | 金字塔缩放后的图像输出指针，内存由接口调用方提供 |
+| attr | 金字塔缩放层的属性配置参数 |
 
 ### 边界填充
 
@@ -417,6 +512,66 @@ crop&resize&rotate效果展示:
 
 pyramid缩小效果展示,每层为上一层的1/2：
 ![image](./imgs/pym/pym_ds.jpg)
+
+### resize
+启动命令：ros2 launch hobot_cv hobot_cv_resize.launch.py
+输出结果：
+```
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [resize_example-1]: process started with pid [120089]
+[resize_example-1] [INFO] [1666364548.561811871] [example]:
+[resize_example-1] source image config/test.jpg is 1920x1080 pixels
+[resize_example-1] [INFO] [1666364548.561984163] [example]: resize image to 960x540 pixels, time cost: 51 ms
+[resize_example-1] [INFO] [1666364548.634829288] [example]: resize image to 960x540 pixels, time cost: 12 ms
+[resize_example-1] [INFO] [1666364548.647819913] [example]: nv12 interface resize image to 960x540 pixels, time cost: 12 ms
+[INFO] [resize_example-1]: process has finished cleanly [pid 120089]
+```
+
+根据log显示，example对1920x1080分辨率图片进行了三次resize操作，前两次使用输入输出图片为cv::Mat的接口，第三次使用输入输出图片为nv12数据指针的接口，三次resize耗时统计如下：
+
+| 图片处理                               | 第一次运行耗时 | 第二次运行耗时 | 第三次运行耗时 |
+| ------------------------------------- | ------------- | ------------- |------------- |
+| 1920x1080 resize到960x540              | 51ms         | 12ms          | 12ms          |
+
+因为第一次运行，需要对硬件进行配置所以耗时较多，如果不再更改硬件配置属性，则硬件直接进行处理，耗时就会显著降低。resize的两种接口，耗时无明显变化。
+
+### crop
+启动命令：ros2 launch hobot_cv hobot_cv_crop.launch.py
+输出结果：
+```
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [crop_example-1]: process started with pid [117973]
+[crop_example-1] [INFO] [1666364496.940625763] [example]: crop image to 960x540 pixels, time cost: 2 ms
+[crop_example-1] [INFO] [1666364497.028130347] [example]: crop image to 960x540 pixels, time cost: 2 ms
+[crop_example-1] [INFO] [1666364497.032258180] [example]: nv12 interface crop image to 960x540 pixels, time cost: 3 ms
+[INFO] [crop_example-1]: process has finished cleanly [pid 117973]
+```
+
+根据log显示，example对1920x1080分辨率图片进行了三次crop出960x540的操作，前两次使用输入输出图片为cv::Mat的接口，第三次使用输入输出图片为nv12数据指针的接口，三次resize耗时统计如下：
+| 图片处理                               | 第一次运行耗时 | 第二次运行耗时 | 第三次运行耗时 |
+| ------------------------------------- | ------------- | ------------- |------------- |
+| 1920x1080 crop出960x540              | 2ms         | 2ms          | 3ms          |
+
+因为crop操作时直接在原图中裁剪，未经过硬件加速，所以每次接口调用耗时无明显差别。第三次使用输入输出图片为nv12数据指针的接口，在接口中涉及到内存的申请过程，所以耗时可能会由略为增加。
+
+### rotate
+启动命令：ros2 launch hobot_cv hobot_cv_rotate.launch.py
+输出结果：
+```
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [rotate_example-1]: process started with pid [121764]
+[rotate_example-1] [INFO] [1666364588.685647265] [example]: rotate image 180 , time cost: 163 ms
+[rotate_example-1]
+[rotate_example-1] [INFO] [1666364588.937273432] [example]: second rotate image 180 , time cost: 38 ms
+[rotate_example-1]
+[rotate_example-1] [INFO] [1666364588.975745807] [example]: nv12 interface rotate image 180 , time cost: 38 ms
+[rotate_example-1]
+[INFO] [rotate_example-1]: process has finished cleanly [pid 121764]
+```
+根据log显示，example对1920x1080分辨率图片进行了三次旋转180度的操作，前两次使用输入输出图片为cv::Mat的接口，第三次使用输入输出图片为nv12数据指针的接口，三次resize耗时统计如下：
+| 图片处理             | 第一次运行耗时 | 第二次运行耗时 | 第三次运行耗时 |
+| --------------------| ------------- | ------------- |------------- |
+| 1920x1080 旋转180度  | 163ms           | 38ms          | 38ms          |
 
 ### padding
 example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
