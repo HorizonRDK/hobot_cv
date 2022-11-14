@@ -77,6 +77,30 @@ int main() {
       RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_rotate.str().c_str());
     }
   }
+  {  // nv12 interface rotate
+    auto before_rotate = std::chrono::system_clock::now();
+    auto imageInfo = hobot_cv::hobotcv_rotate(
+        reinterpret_cast<const char *>(srcmat_nv12.data),
+        src_height,
+        src_width,
+        hobot_cv::ROTATION_180);
+    auto after_rotate = std::chrono::system_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        after_rotate - before_rotate)
+                        .count();
+    if (imageInfo != nullptr) {
+      std::stringstream ss_rotate;
+      ss_rotate << "nv12 interface rotate image 180 "
+                << ", time cost: " << interval << " ms"
+                << "\n";
+      RCLCPP_INFO(rclcpp::get_logger("example"), "%s", ss_rotate.str().c_str());
+      cv::Mat dst_mat(imageInfo->height * 3 / 2,
+                      imageInfo->width,
+                      CV_8UC1,
+                      imageInfo->imageAddr);
+      writeImg(dst_mat, "./nv12_interface_rotate.jpg");
+    }
+  }
 
   return 0;
 }

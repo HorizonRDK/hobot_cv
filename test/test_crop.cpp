@@ -79,5 +79,33 @@ int main() {
   RCLCPP_INFO(
       rclcpp::get_logger("example"), "%s", ss_crop_second.str().c_str());
 
+  // nv12 interface crop
+  before_crop = std::chrono::system_clock::now();
+  auto imageInfo =
+      hobot_cv::hobotcv_crop(reinterpret_cast<const char *>(srcmat_nv12.data),
+                             src_height,
+                             src_width,
+                             dst_height,
+                             dst_width,
+                             cv::Range(0, dst_height),
+                             cv::Range(0, dst_width));
+  after_crop = std::chrono::system_clock::now();
+  interval = std::chrono::duration_cast<std::chrono::milliseconds>(after_crop -
+                                                                   before_crop)
+                 .count();
+  if (imageInfo != nullptr) {
+    std::stringstream ss_crop_second;
+    ss_crop_second << "nv12 interface crop image to " << dst_width << "x"
+                   << dst_height << " pixels"
+                   << ", time cost: " << interval << " ms";
+    RCLCPP_INFO(
+        rclcpp::get_logger("example"), "%s", ss_crop_second.str().c_str());
+    cv::Mat dst_mat(imageInfo->height * 3 / 2,
+                    imageInfo->width,
+                    CV_8UC1,
+                    imageInfo->imageAddr);
+    writeImg(dst_mat, "./nv12_interface_crop.jpg");
+  }
+
   return 0;
 }
