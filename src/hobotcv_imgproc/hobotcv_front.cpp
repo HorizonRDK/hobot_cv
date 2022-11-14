@@ -445,6 +445,58 @@ hbSysMem *hobotcv_vps_resize(const char *src,
   return hobotcv.getChnFrame(dst_h, dst_w);
 }
 
+int hobotcv_bpu_resize(const char *src,
+                       const int src_h,
+                       const int src_w,
+                       int dst_h,
+                       int dst_w,
+                       int range_h,
+                       int range_w,
+                       hbDNNTensor *input_tensor,
+                       hbDNNTensor *output_tensor,
+                       hbDNNRoi *roi) {
+  auto ret = prepareBpuResizeParam(range_w, range_h, dst_w, dst_h);
+  if (ret != 0) {
+    return ret;
+  }
+  prepare_nv12_tensor_without_padding(src, src_h, src_w, input_tensor);
+  prepare_nv12_tensor_without_padding(dst_h, dst_w, output_tensor);
+  hbDNNResizeCtrlParam ctrl = {
+      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
+  hbDNNTaskHandle_t task_handle = nullptr;
+
+  ret = 0;
+  if (range_w == 0 || range_h == 0) {
+    ret =
+        hbDNNResize(&task_handle, output_tensor, input_tensor, nullptr, &ctrl);
+  } else {
+    ret = hbDNNResize(&task_handle, output_tensor, input_tensor, roi, &ctrl);
+  }
+
+  if (0 != ret) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNResize failed!");
+    hbSysFreeMem(&(input_tensor->sysMem[0]));
+    hbSysFreeMem(&(output_tensor->sysMem[0]));
+    return ret;
+  }
+  ret = hbDNNWaitTaskDone(task_handle, 0);
+  if (0 != ret) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNWaitTaskDone failed!");
+    hbSysFreeMem(&(input_tensor->sysMem[0]));
+    hbSysFreeMem(&(output_tensor->sysMem[0]));
+    return ret;
+  }
+  ret = hbDNNReleaseTask(task_handle);
+  if (0 != ret) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "release task  failed!!");
+    hbSysFreeMem(&(input_tensor->sysMem[0]));
+    hbSysFreeMem(&(output_tensor->sysMem[0]));
+    return ret;
+  }
+
+  return 0;
+}
+
 hobotcv_front::hobotcv_front() {
   group_id = -1;
   roi.cropEnable = 0;
@@ -615,28 +667,17 @@ int hobotcv_front::prepareRotateParam(int width, int height, int rotation) {
       return -1;
       break;
   }
-  if (rotate == 90 || rotate == 270) {
-    if (width % 16 != 0 || height % 16 != 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
-                   "unsupported src resolution %d x %d, the width and height "
-                   "must be a multiple of 16!",
-                   width,
-                   height);
-      return -1;
-    }
-  } else {
-    if (width % 16 != 0) {
-      RCLCPP_ERROR(
-          rclcpp::get_logger("hobot_cv rotate"),
-          "unsupported src width: %d, the width must be a multiple of 16!",
-          width);
-      return -1;
-    }
-    if (height % 2 != 0) {
-      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
-                   "unsupported src height %d! The src height must be even!",
-                   height);
-    }
+  if (width % 16 != 0) {
+    RCLCPP_ERROR(
+        rclcpp::get_logger("hobot_cv rotate"),
+        "unsupported src width: %d, the width must be a multiple of 16!",
+        width);
+    return -1;
+  }
+  if (height % 2 != 0) {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv rotate"),
+                 "unsupported src height %d! The src height must be even!",
+                 height);
   }
 
   if (width > 4096 || height > 2160 || width < 32 || height < 32) {

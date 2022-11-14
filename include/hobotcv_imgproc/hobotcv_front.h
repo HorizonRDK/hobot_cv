@@ -58,6 +58,7 @@ std::unique_ptr<char[]> hobotcv_reflect_padding(const char *src,
                                                 uint32_t left,
                                                 uint32_t right);
 
+/* hobotcv 使用vps加速进行resize，输入输出图片为Mat*/
 int hobotcv_vps_resize(const cv::Mat &src,
                        cv::Mat &dst,
                        int dst_h,
@@ -65,6 +66,7 @@ int hobotcv_vps_resize(const cv::Mat &src,
                        const cv::Range &rowRange,
                        const cv::Range &colRange);
 
+/* hobotcv 使用vps加速进行resize，输入输出图片为nv12格式数据的地址*/
 hbSysMem *hobotcv_vps_resize(const char *src,
                              const int src_h,
                              const int src_w,
@@ -72,6 +74,18 @@ hbSysMem *hobotcv_vps_resize(const char *src,
                              int &dst_w,
                              const cv::Range &rowRange,
                              const cv::Range &colRange);
+
+/* hobotcv 使用bpu加速resize，输出图片数据地址output_tensor->sysMem[0].virAddr*/
+int hobotcv_bpu_resize(const char *src,
+                       const int src_h,
+                       const int src_w,
+                       int dst_h,
+                       int dst_w,
+                       int range_h,
+                       int range_w,
+                       hbDNNTensor *input_tensor,
+                       hbDNNTensor *output_tensor,
+                       hbDNNRoi *roi);
 
 class hobotcv_front {
  public:

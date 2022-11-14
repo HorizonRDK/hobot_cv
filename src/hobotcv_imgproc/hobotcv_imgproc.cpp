@@ -29,71 +29,43 @@ int hobotcv_resize(const cv::Mat &src,
                    int dst_h,
                    int dst_w,
                    HobotcvSpeedUpType type) {
+  bool vps_resize = false;
   if (type == HOBOTCV_AUTO) {
     hobotcv_front hobotcv;
     auto ret = hobotcv.prepareResizeParam(src_w, src_h, dst_w, dst_h, false);
     if (ret == 0) {
-      return hobotcv_vps_resize(
-          src, dst, dst_h, dst_w, cv::Range(0, 0), cv::Range(0, 0));
+      vps_resize = true;
     }
   } else if (type == HOBOTCV_VPS) {
+    vps_resize = true;
+  }
+  if (vps_resize) {
     return hobotcv_vps_resize(
         src, dst, dst_h, dst_w, cv::Range(0, 0), cv::Range(0, 0));
   }
-  auto ret = prepareBpuResizeParam(src_w, src_h, dst_w, dst_h);
-  if (ret != 0) {
-    return ret;
-  }
-  hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(
-      reinterpret_cast<const char *>(src.data), src_h, src_w, &input_tensor);
-  // Prepare output tensor
-  hbDNNTensor output_tensor;
-  prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
-  // resize
-  hbDNNResizeCtrlParam ctrl = {
-      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
-  hbDNNTaskHandle_t task_handle = nullptr;
 
-  ret =
-      hbDNNResize(&task_handle, &output_tensor, &input_tensor, nullptr, &ctrl);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNResize failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return ret;
-  }
-  ret = hbDNNWaitTaskDone(task_handle, 0);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNWaitTaskDone failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return ret;
-  }
-  ret = hbDNNReleaseTask(task_handle);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "release task  failed!!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
+  hbDNNTensor input_tensor;
+  hbDNNTensor output_tensor;
+  auto ret = hobotcv_bpu_resize(reinterpret_cast<const char *>(src.data),
+                                src_h,
+                                src_w,
+                                dst_h,
+                                dst_w,
+                                src_h,
+                                src_w,
+                                &input_tensor,
+                                &output_tensor,
+                                nullptr);
+  if (ret != 0) {
     return ret;
   }
 
   size_t size = dst_h * dst_w * 3 / 2;
   dst = cv::Mat(dst_h * 3 / 2, dst_w, CV_8UC1);
   memcpy(dst.data, output_tensor.sysMem[0].virAddr, size);
-  ret = hbSysFreeMem(&(input_tensor.sysMem[0]));
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "Free input_tensor mem failed!!");
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return ret;
-  }
-  ret = hbSysFreeMem(&(output_tensor.sysMem[0]));
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"),
-                 "Free output_tensor mem failed!!");
-    return ret;
-  }
+  hbSysFreeMem(&(input_tensor.sysMem[0]));
+  hbSysFreeMem(&(output_tensor.sysMem[0]));
+
   return 0;
 }
 
@@ -105,6 +77,7 @@ cv::Mat hobotcv_crop(const cv::Mat &src,
                      const cv::Range &rowRange,
                      const cv::Range &colRange,
                      HobotcvSpeedUpType type) {
+  bool vps_resize = false;
   if (type == HOBOTCV_AUTO) {
     hobotcv_front hobotcv;
     auto ret = hobotcv.prepareCropRoi(
@@ -112,17 +85,18 @@ cv::Mat hobotcv_crop(const cv::Mat &src,
     if (ret == 0) {
       ret = hobotcv.prepareResizeParam(src_w, src_h, dst_w, dst_h, false);
       if (ret == 0) {
-        cv::Mat dst;
-        hobotcv_vps_resize(src, dst, dst_h, dst_w, rowRange, colRange);
-        return dst;
+        vps_resize = true;
       }
     }
+  } else if (type == HOBOTCV_VPS) {
+    vps_resize = true;
   }
-  if (type == HOBOTCV_VPS) {
+  if (vps_resize) {
     cv::Mat dst;
     hobotcv_vps_resize(src, dst, dst_h, dst_w, rowRange, colRange);
     return dst;
   }
+
   cv::Mat dst(dst_h * 3 / 2, dst_w, CV_8UC1);
   if (rowRange.end > src_h || colRange.end > src_w || rowRange.start < 0 ||
       colRange.start < 0) {  // crop区域要在原图范围内
@@ -178,68 +152,26 @@ cv::Mat hobotcv_crop(const cv::Mat &src,
     return dst;
   }
 
-  auto ret = prepareBpuResizeParam(range_w, range_h, dst_w, dst_h);
-  if (ret != 0) {
-    return dst;
-  }
-
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(
-      reinterpret_cast<const char *>(src.data), src_h, src_w, &input_tensor);
-  // Prepare output tensor
   hbDNNTensor output_tensor;
-  prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
-
-  // resize
-  hbDNNResizeCtrlParam ctrl = {
-      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
-  hbDNNTaskHandle_t task_handle = nullptr;
-
-  ret = 0;
-  if (range_w == 0 || range_h == 0) {
-    ret = hbDNNResize(
-        &task_handle, &output_tensor, &input_tensor, nullptr, &ctrl);
-  } else {
-    ret = hbDNNResize(&task_handle, &output_tensor, &input_tensor, &roi, &ctrl);
-  }
-
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"), "hbDNNResize failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return dst;
-  }
-  ret = hbDNNWaitTaskDone(task_handle, 0);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"),
-                 "hbDNNWaitTaskDone failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return dst;
-  }
-  hbDNNReleaseTask(task_handle);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"), "release task failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
+  auto ret = hobotcv_bpu_resize(reinterpret_cast<const char *>(src.data),
+                                src_h,
+                                src_w,
+                                dst_h,
+                                dst_w,
+                                range_h,
+                                range_w,
+                                &input_tensor,
+                                &output_tensor,
+                                &roi);
+  if (ret != 0) {
     return dst;
   }
 
   size_t size = dst_h * dst_w * 3 / 2;
   memcpy(dst.data, output_tensor.sysMem[0].virAddr, size);
-  ret = hbSysFreeMem(&(input_tensor.sysMem[0]));
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"),
-                 "Free input_tensor mem failed!");
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return dst;
-  }
-  ret = hbSysFreeMem(&(output_tensor.sysMem[0]));
-  if (ret != 0) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"),
-                 "Free output_tensor mem failed!");
-    return dst;
-  }
+  hbSysFreeMem(&(input_tensor.sysMem[0]));
+  hbSysFreeMem(&(output_tensor.sysMem[0]));
   return dst;
 }
 
@@ -425,40 +357,19 @@ std::shared_ptr<ImageInfo> hobotcv_resize(const char *src,
                                         delete imageInfo;
                                       });
   }
-  auto ret = prepareBpuResizeParam(src_w, src_h, dst_w, dst_h);
-  if (ret != 0) {
-    return nullptr;
-  }
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src, src_h, src_w, &input_tensor);
-  // Prepare output tensor
   hbDNNTensor output_tensor;
-  prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
-  // resize
-  hbDNNResizeCtrlParam ctrl = {
-      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
-  hbDNNTaskHandle_t task_handle = nullptr;
-
-  ret =
-      hbDNNResize(&task_handle, &output_tensor, &input_tensor, nullptr, &ctrl);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNResize failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return nullptr;
-  }
-  ret = hbDNNWaitTaskDone(task_handle, 0);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "hbDNNWaitTaskDone failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return nullptr;
-  }
-  ret = hbDNNReleaseTask(task_handle);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv"), "release task failed!!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
+  auto ret = hobotcv_bpu_resize(src,
+                                src_h,
+                                src_w,
+                                dst_h,
+                                dst_w,
+                                src_h,
+                                src_w,
+                                &input_tensor,
+                                &output_tensor,
+                                nullptr);
+  if (ret != 0) {
     return nullptr;
   }
 
@@ -588,50 +499,19 @@ std::shared_ptr<ImageInfo> hobotcv_crop(const char *src,
                                         delete imageInfo;
                                       });
   }
-
-  auto ret = prepareBpuResizeParam(range_w, range_h, dst_w, dst_h);
-  if (ret != 0) {
-    return nullptr;
-  }
-
   hbDNNTensor input_tensor;
-  prepare_nv12_tensor_without_padding(src, src_h, src_w, &input_tensor);
-  // Prepare output tensor
   hbDNNTensor output_tensor;
-  prepare_nv12_tensor_without_padding(dst_h, dst_w, &output_tensor);
-
-  // resize
-  hbDNNResizeCtrlParam ctrl = {
-      HB_BPU_CORE_0, 0, HB_DNN_RESIZE_TYPE_BILINEAR, 0, 0, 0, 0};
-  hbDNNTaskHandle_t task_handle = nullptr;
-
-  ret = 0;
-  if (range_w == 0 || range_h == 0) {
-    ret = hbDNNResize(
-        &task_handle, &output_tensor, &input_tensor, nullptr, &ctrl);
-  } else {
-    ret = hbDNNResize(&task_handle, &output_tensor, &input_tensor, &roi, &ctrl);
-  }
-
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"), "hbDNNResize failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return nullptr;
-  }
-  ret = hbDNNWaitTaskDone(task_handle, 0);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"),
-                 "hbDNNWaitTaskDone failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
-    return nullptr;
-  }
-  hbDNNReleaseTask(task_handle);
-  if (0 != ret) {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv crop"), "release task failed!");
-    hbSysFreeMem(&(input_tensor.sysMem[0]));
-    hbSysFreeMem(&(output_tensor.sysMem[0]));
+  auto ret = hobotcv_bpu_resize(src,
+                                src_h,
+                                src_w,
+                                dst_h,
+                                dst_w,
+                                range_h,
+                                range_w,
+                                &input_tensor,
+                                &output_tensor,
+                                &roi);
+  if (ret != 0) {
     return nullptr;
   }
 

@@ -156,8 +156,8 @@ int hobotcv_imgproc(const cv::Mat &src,
 /**
  * hobotcv加速图片pyramid处理
  * @param[in] src: 需要进行pyramid处理的原图，只支持nv12格式图片
- * @param[out]
- * output：pyramid处理后输出的图像信息指针，输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT
+ * @param[in/out] output：pyramid处理后输出的图像信息指针，
+ *                输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT,由用户做内存管理
  * @param[in] attr：pyramid处理的配置属性，具体数据结构为HOBOT_CV_PYM_ATTR
  * @return 成功返回0，失败返回非0
  */
@@ -260,8 +260,8 @@ std::shared_ptr<ImageInfo> hobotcv_imgproc(const char *src,
  * @param[in] src: 需要进行pyramid处理的原图，只支持nv12格式图片
  * @param[in] src_h: 原图高
  * @param[in] src_w: 原图宽
- * @param[out] output：pyramid处理后输出的图像信息指针，
- *              输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT
+ * @param[in/out] output：pyramid处理后输出的图像信息指针，
+ *              输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT,由用户做内存管理
  * @param[in] attr：pyramid处理的配置属性，具体数据结构为HOBOT_CV_PYM_ATTR
  * @return 成功返回0，失败返回非0
  */
