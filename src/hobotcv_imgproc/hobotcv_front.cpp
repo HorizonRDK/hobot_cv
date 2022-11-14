@@ -32,25 +32,67 @@ namespace hobot_cv {
 bool check_padding_area(uint32_t top,
                         uint32_t bottom,
                         uint32_t left,
-                        uint32_t right) {
+                        uint32_t right,
+                        const int &src_h,
+                        const int &src_w,
+                        int padding_type) {
+  if (padding_type == (int)(HobotcvPaddingType::HOBOTCV_REFLECT)) {
+    // HOBOTCV_REFLECT方式，padding尺寸如果超过原图尺寸会发生越界
+    if ((int)top > src_h) {
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
+                   "Invalid top size: %d! src_h: %d , padding top must be less "
+                   "than src height!",
+                   top,
+                   src_h);
+      return false;
+    } else if ((int)bottom > src_h) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv padding"),
+          "Invalid bottom size: %d! src_h: %d , padding bottom must be less "
+          "than src height!",
+          bottom,
+          src_h);
+      return false;
+    } else if ((int)left > src_w) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv padding"),
+          "Invalid left size: %d! src_w: %d , padding left must be less "
+          "than src width!",
+          left,
+          src_w);
+      return false;
+    } else if ((int)right > src_w) {
+      RCLCPP_ERROR(
+          rclcpp::get_logger("hobot_cv padding"),
+          "Invalid right size: %d! src_w: %d , padding right must be less "
+          "than src width!",
+          right,
+          src_w);
+      return false;
+    }
+  }
   if (top == 0 && bottom == 0 && left == 0 && right == 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"), "No padding area!");
     return false;
   } else if (top % 2 != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid top size: %d! Padding size must be even");
+                 "Invalid top size: %d! Padding size must be even",
+                 top);
     return false;
   } else if (bottom % 2 != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid bottom size: %d! Padding size must be even");
+                 "Invalid bottom size: %d! Padding size must be even",
+                 bottom);
     return false;
   } else if (left % 2 != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid left size: %d! Padding size must be even");
+                 "Invalid left size: %d! Padding size must be even",
+                 left);
     return false;
   } else if (right % 2 != 0) {
     RCLCPP_ERROR(rclcpp::get_logger("hobot_cv padding"),
-                 "Invalid right size: %d! Padding size must be even");
+                 "Invalid right size: %d! Padding size must be even",
+                 right);
     return false;
   }
   return true;

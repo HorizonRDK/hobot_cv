@@ -369,7 +369,13 @@ HobotcvImagePtr hobotcv_BorderPadding(const char *src,
                                       const HobotcvPaddingType type,
                                       const PaddingArea &area,
                                       const uint8_t value) {
-  if (!check_padding_area(area.top, area.bottom, area.left, area.right)) {
+  if (!check_padding_area(area.top,
+                          area.bottom,
+                          area.left,
+                          area.right,
+                          src_h,
+                          src_w,
+                          (int)type)) {
     return nullptr;
   }
   if (type == HobotcvPaddingType::HOBOTCV_CONSTANT) {

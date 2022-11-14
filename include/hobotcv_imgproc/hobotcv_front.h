@@ -22,7 +22,10 @@ namespace hobot_cv {
 bool check_padding_area(uint32_t top,
                         uint32_t bottom,
                         uint32_t left,
-                        uint32_t right);
+                        uint32_t right,
+                        const int &src_h,
+                        const int &src_w,
+                        int padding_type);
 
 /* hobotcv constant填充方式，用传入的value填充，
 成功返回填充后图片数据，失败返回nullptr*/

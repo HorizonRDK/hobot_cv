@@ -170,12 +170,11 @@ int hobotcv_pymscale(const cv::Mat &src,
  * @param[in] src: 需要填充边界的原图，只支持nv12格式图片
  * @param[in] src_h: 原图高
  * @param[in] src_w: 原图宽
- * @param[out] dst：填充处理后输出的图片数据，nv12格式
  * @param[in] type：填充方式，支持指定值填充和复制原图边界两种方式
  * @param[in] area：上下左右填充区域
- * @param[in]
- * value：填充的像素值，当填充方式为HOBOTCV_CONSTANT时，value值有效，取值范围0~255.默认值为0
- * @return 成功返回0，失败返回非0
+ * @param[in] value：填充的像素值，
+ *            当填充方式为HOBOTCV_CONSTANT时，value值有效，取值范围0~255.默认值为0
+ * @return 成功返回填充后的图片数据指针，失败返回nullptr
  */
 HobotcvImagePtr hobotcv_BorderPadding(const char *src,
                                       const int &src_h,
@@ -261,8 +260,8 @@ std::shared_ptr<ImageInfo> hobotcv_imgproc(const char *src,
  * @param[in] src: 需要进行pyramid处理的原图，只支持nv12格式图片
  * @param[in] src_h: 原图高
  * @param[in] src_w: 原图宽
- * @param[out]
- * output：pyramid处理后输出的图像信息指针，输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT
+ * @param[out] output：pyramid处理后输出的图像信息指针，
+ *              输出图片与输入的pyramid配置相关，具体数据结构为HOBOT_CV_PYRAMID_OUTPUT
  * @param[in] attr：pyramid处理的配置属性，具体数据结构为HOBOT_CV_PYM_ATTR
  * @return 成功返回0，失败返回非0
  */
