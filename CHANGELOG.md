@@ -1,5 +1,10 @@
 # Changelog for package hobot_cv
 
+tros_1.1.3 (2022-11-16)
+------------------
+1. hobot_cv增加padding功能接口
+2. hobot_cv接口适配输入输出图片为nv12数据格式
+
 tros_1.1.2rc1 (2022-10-19)
 ------------------
 1. 解决hobot_cv创建共享内存状态为dest，多进程调用访问不是同一块共享内存导致group状态错乱的问题
