@@ -108,8 +108,8 @@ target_link_libraries(test_gaussian_blur
   ${PROJECT_NAME})
 
 add_executable(hobotcv_benchmark
-benchmark/main.cpp
-benchmark/hobotcv_benchmark_node.cpp)
+benchmark/src/main.cpp
+benchmark/src/hobotcv_benchmark_node.cpp)
 target_link_libraries(hobotcv_benchmark
   ${LINK_LIBS}
   ${PROJECT_NAME}

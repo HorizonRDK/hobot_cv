@@ -391,28 +391,10 @@ int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 | ksize | 均值滤波器模板大小，目前只支持3x3和5x5大小 |
 
 ## hobotcv_benchmark
-
-### 功能介绍
-hobotcv_benchmark是hobot_cv vps和bpu以及opencv对图片处理耗时统计的工具。每隔33ms调用一次处理接口，每调用100次输出一次耗时最大值，最小值和平均值。
-
-### 参数
-
-| 参数名           | 含义                   | 取值                          | 默认值                |
-| --------------  | ---------------------- | ----------------------------- | --------------------- |
-| image_file      | 输入图片的路径          | 字符串                         |      config/test.jpg       |
-| dst_width       | resize后输出图片宽      | int                          |      960          |
-| dst_height      | resize后输出图片高      | int                          |      540          |
-| rotation        | 旋转角度                | 90/180/270                  |      180          |
-| cv_type         | 图片处理操作         | resize/rotate                  |      resize          |
-| interface_type   | hobot_cv接口输入输出图片格式 | 1：cv::Mat  2: nv12       |      2          |
-| speed_type       | 图片处理加速方式         |    vps/bpu/opencv               |      vps          |
+[hobotcv_benchmark相关介绍](./benchmark/README.md)
 
 ## 运行
 - 编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行。
-- 进行benchamrk测试时，需要注意锁频：
-```
-sudo bash -c 'echo performance > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor'
-```
 
 ## X3 Ubuntu系统上运行
 
@@ -434,9 +416,6 @@ ros2 launch hobot_cv hobot_cv_gaussian_blur.launch.py
 使用本地tof格式图片通过hobot_cv接口时实现图片的高斯滤波与均值滤波，采用neon加速
 ros2 launch hobot_cv hobot_cv_neon_blur.launch.py
 
-# 启动benchmark launch文件
-hobot_cv以vps加速方式的nv12接口，resize默认的config/test.jpg图片，从1920x1080 缩小到960x540
-ros2 launch hobot_cv hobot_cv_benchmark.launch.py
 ```
 
 ## X3 yocto系统上运行
@@ -458,10 +437,6 @@ ros2 run hobot_cv test_gaussian_blur
 # 运行模式3：
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波与均值滤波，采用neon加速。
 ros2 run hobot_cv neon_example
-
-# 启动benchmark launch文件
-hobot_cv以vps加速方式的nv12接口，resize默认的config/test.jpg图片，从1920x1080 缩小到960x540
-ros2 run hobot_cv hobotcv_benchmark
 
 ```
 

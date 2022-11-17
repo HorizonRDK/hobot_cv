@@ -14,7 +14,7 @@
 
 #include "hobotcv_benchmark_node.h"
 
-#include "hobot_cv/hobotcv_imgproc.h"
+#include "hobotcv_imgproc/hobotcv_imgproc.h"
 #include "utils.h"
 
 hobotcv_benchmark_node::hobotcv_benchmark_node(
