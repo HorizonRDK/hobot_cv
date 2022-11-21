@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hobotcv_benchmark_node.h"
+#include "benchmark/hobotcv_benchmark_node.h"
 #include "rclcpp/rclcpp.hpp"
 
 int main(int argc, char** argv) {

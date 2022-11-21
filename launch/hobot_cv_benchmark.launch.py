@@ -33,14 +33,14 @@ def generate_launch_description():
     dst_height_launch_arg = DeclareLaunchArgument(
         "dst_height",default_value=TextSubstitution(text="540")
     )
-    cv_type_launch_arg = DeclareLaunchArgument(
-        "cv_type",default_value=TextSubstitution(text="resize")
+    process_type_launch_arg = DeclareLaunchArgument(
+        "process_type",default_value=TextSubstitution(text="0")
     )
-    interface_type_launch_arg = DeclareLaunchArgument(
-        "interface_type",default_value=TextSubstitution(text="2")
+    img_fmt_launch_arg = DeclareLaunchArgument(
+        "img_fmt",default_value=TextSubstitution(text="0")
     )
     speed_type_launch_arg = DeclareLaunchArgument(
-        "speed_type",default_value=TextSubstitution(text="vps")
+        "speed_type",default_value=TextSubstitution(text="0")
     )
 
 
@@ -49,8 +49,8 @@ def generate_launch_description():
         rotation_launch_arg,
         dst_width_launch_arg,
         dst_height_launch_arg,
-        cv_type_launch_arg,
-        interface_type_launch_arg,
+        process_type_launch_arg,
+        img_fmt_launch_arg,
         speed_type_launch_arg,
         Node(
             package='hobot_cv',
@@ -61,8 +61,8 @@ def generate_launch_description():
                 {"rotation": LaunchConfiguration('rotation')},
                 {"dst_width": LaunchConfiguration('dst_width')},
                 {"dst_height": LaunchConfiguration('dst_height')},
-                {"cv_type": LaunchConfiguration('cv_type')},
-                {"interface_type": LaunchConfiguration('interface_type')},
+                {"process_type": LaunchConfiguration('process_type')},
+                {"img_fmt": LaunchConfiguration('img_fmt')},
                 {"speed_type": LaunchConfiguration('speed_type')}
             ],
             arguments=['--ros-args', '--log-level', 'info']

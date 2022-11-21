@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hobotcv_benchmark_node.h"
+#include "benchmark/hobotcv_benchmark_node.h"
 
 #include "hobotcv_imgproc/hobotcv_imgproc.h"
 #include "utils.h"
@@ -32,44 +32,66 @@ hobotcv_benchmark_node::hobotcv_benchmark_node(
   this->declare_parameter("rotation", rotation);
   this->get_parameter("rotation", rotation);
 
-  this->declare_parameter("cv_type", cv_type);
-  this->get_parameter("cv_type", cv_type);
+  this->declare_parameter("process_type", process_type_in);
+  this->get_parameter("process_type", process_type_in);
+  if (process_type_in == 0) {
+    process_type = Process_Type::RESIZE;
+  } else if (process_type_in == 1) {
+    process_type = Process_Type::ROTATE;
+  } else {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv benchmark"),
+                 "unsupport process_type: %d! 0: resize 1:rotate",
+                 process_type_in);
+    return;
+  }
 
-  this->declare_parameter("interface_type", interface_type);
-  this->get_parameter("interface_type", interface_type);
+  this->declare_parameter("img_fmt", img_fmt_in);
+  this->get_parameter("img_fmt", img_fmt_in);
+  if (img_fmt_in == 0) {
+    img_fmt = Image_Format::MAT;
+  } else if (img_fmt_in == 1) {
+    img_fmt = Image_Format::NV12;
+  } else {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv benchmark"),
+                 "unsupport img_fmt: %d! 0: cv::Mat 1:nv12",
+                 img_fmt_in);
+    return;
+  }
 
-  this->declare_parameter("speed_type", speed_type);
-  this->get_parameter("speed_type", speed_type);
+  this->declare_parameter("speedup_type", speedup_type_in);
+  this->get_parameter("speedup_type", speedup_type_in);
+  if (speedup_type_in == 0) {
+    speed_type = Speedup_Type::HOBOTCV_VPS;
+  } else if (speedup_type_in == 1) {
+    speed_type = Speedup_Type::HOBOTCV_BPU;
+  } else if (speedup_type_in == 2) {
+    speed_type = Speedup_Type::OPENCV;
+  } else {
+    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv benchmark"),
+                 "unsupport speedup_type: %d! 0: vps、1: bpu、2: opencv",
+                 speedup_type_in);
+    return;
+  }
 
   cv::Mat bgr_mat = cv::imread(image_file, cv::IMREAD_COLOR);
   cv::Mat srcmat_nv12;
   BGRToNv12(bgr_mat, srcmat_nv12);
-  if (cv_type == "resize") {
-    if (speed_type == "vps" || speed_type == "bpu") {
+  if (process_type == Process_Type::RESIZE) {
+    if (speed_type == Speedup_Type::HOBOTCV_VPS ||
+        speed_type == Speedup_Type::HOBOTCV_BPU) {
       hobotcv_resize_benchmark(srcmat_nv12);
-    } else if (speed_type == "opencv") {
+    } else if (speed_type == Speedup_Type::OPENCV) {
       opencv_resize_benchmark(bgr_mat);
-    } else {
-      RCLCPP_ERROR(
-          rclcpp::get_logger("hobot_cv benchmark"),
-          "unsupport speed_type: %s! vps, bpu and opencv are supported",
-          speed_type.c_str());
     }
-  } else if (cv_type == "rotate") {
-    if (speed_type == "vps") {
+  } else if (process_type == Process_Type::ROTATE) {
+    if (speed_type == Speedup_Type::HOBOTCV_VPS) {
       hobotcv_rotate_benchmark(srcmat_nv12);
-    } else if (speed_type == "bpu") {
+    } else if (speed_type == Speedup_Type::HOBOTCV_BPU) {
       opencv_rotate_benchmark(bgr_mat);
     } else {
-      RCLCPP_ERROR(
-          rclcpp::get_logger("hobot_cv benchmark"),
-          "unsupport speed_type: %s! Rotate supports only vps and opencv",
-          speed_type.c_str());
+      RCLCPP_ERROR(rclcpp::get_logger("hobot_cv benchmark"),
+                   "Rotate supports only vps and opencv");
     }
-  } else {
-    RCLCPP_ERROR(rclcpp::get_logger("hobot_cv benchmark"),
-                 "unsupport cv_type: %s! resize and rotate are supported",
-                 cv_type.c_str());
   }
 }
 
@@ -78,28 +100,28 @@ hobotcv_benchmark_node::~hobotcv_benchmark_node() {}
 void hobotcv_benchmark_node::hobotcv_resize_benchmark(cv::Mat &src) {
   std::string method;
   hobot_cv::HobotcvSpeedUpType type;
-  if (speed_type == "vps") {
+  if (speed_type == Speedup_Type::HOBOTCV_VPS) {
     type = hobot_cv::HOBOTCV_VPS;
-    if (interface_type == 1) {
+    if (img_fmt == Image_Format::MAT) {
       method = "hobotcv VPS mat";
-    } else if (interface_type == 2) {
+    } else if (img_fmt == Image_Format::NV12) {
       method = "hobotcv VPS nv12";
     }
-  } else if (speed_type == "bpu") {
+  } else if (speed_type == Speedup_Type::HOBOTCV_BPU) {
     type = hobot_cv::HOBOTCV_BPU;
-    if (interface_type == 1) {
+    if (img_fmt == Image_Format::MAT) {
       method = "hobotcv BPU mat";
-    } else if (interface_type == 2) {
+    } else if (img_fmt == Image_Format::NV12) {
       method = "hobotcv BPU nv12";
     }
   }
 
   cv::Mat resized_mat(dst_height, dst_width, src.type());
   // vps or bpu第一次resize不进入耗时统计
-  if (interface_type == 1) {
+  if (img_fmt == Image_Format::MAT) {
     hobot_cv::hobotcv_resize(
         src, src_height, src_width, resized_mat, dst_height, dst_width, type);
-  } else if (interface_type == 2) {  // nv12
+  } else if (img_fmt == Image_Format::NV12) {  // nv12
     auto imageInfo =
         hobot_cv::hobotcv_resize(reinterpret_cast<const char *>(src.data),
                                  src_height,
@@ -114,10 +136,10 @@ void hobotcv_benchmark_node::hobotcv_resize_benchmark(cv::Mat &src) {
   int index = 0;
   while (1) {
     auto start = std::chrono::steady_clock::now();
-    if (interface_type == 1) {
+    if (img_fmt == Image_Format::MAT) {
       hobot_cv::hobotcv_resize(
           src, src_height, src_width, resized_mat, dst_height, dst_width, type);
-    } else if (interface_type == 2) {  // nv12
+    } else if (img_fmt == Image_Format::NV12) {  // nv12
       auto imageInfo =
           hobot_cv::hobotcv_resize(reinterpret_cast<const char *>(src.data),
                                    src_height,
@@ -162,10 +184,10 @@ void hobotcv_benchmark_node::hobotcv_rotate_benchmark(cv::Mat &src) {
   float latency = 0.0;
   cv::Mat rotate_mat;
   std::string method;
-  if (interface_type == 1) {  // mat
+  if (img_fmt == Image_Format::MAT) {  // mat
     method = "hobotcv VPS mat";
     hobot_cv::hobotcv_rotate(src, rotate_mat, cv_rotation);
-  } else if (interface_type == 2) {  // nv12
+  } else if (img_fmt == Image_Format::NV12) {  // nv12
     method = "hobotcv VPS nv12";
     auto imageInfo =
         hobot_cv::hobotcv_rotate(reinterpret_cast<const char *>(src.data),
@@ -178,9 +200,9 @@ void hobotcv_benchmark_node::hobotcv_rotate_benchmark(cv::Mat &src) {
   int index = 0;
   while (1) {
     auto start = std::chrono::steady_clock::now();
-    if (interface_type == 1) {
+    if (img_fmt == Image_Format::MAT) {
       hobot_cv::hobotcv_rotate(src, rotate_mat, (hobot_cv::ROTATION_E)rotation);
-    } else if (interface_type == 2) {  // nv12
+    } else if (img_fmt == Image_Format::NV12) {  // nv12
       auto imageInfo =
           hobot_cv::hobotcv_rotate(reinterpret_cast<const char *>(src.data),
                                    src_height,

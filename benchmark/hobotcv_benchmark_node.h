@@ -28,6 +28,10 @@
 
 using rclcpp::NodeOptions;
 
+enum class Speedup_Type { HOBOTCV_VPS = 0, HOBOTCV_BPU = 1, OPENCV = 2 };
+enum class Process_Type { RESIZE = 0, ROTATE = 1 };
+enum class Image_Format { MAT = 0, NV12 = 1 };
+
 class hobotcv_benchmark_node : public rclcpp::Node {
  public:
   hobotcv_benchmark_node(
@@ -55,9 +59,13 @@ class hobotcv_benchmark_node : public rclcpp::Node {
   int dst_width = 960;                         // 输出图片宽
   int rotation = 180;                          // 旋转角度
 
-  std::string cv_type = "resize";  //图片操作type，resize/rotate
-  int interface_type = 2;  // hobot_cv接口输入输出图片格式  1：cv::Mat   2: nv12
-  std::string speed_type = "vps";  //图片处理加速类型  vps、bpu、opencv
+  int process_type_in = 0;  //图片操作type，0: resize 1:rotate
+  int img_fmt_in = 0;  // hobot_cv接口输入输出图片格式  0：cv::Mat   1: nv12
+  int speedup_type_in = 0;  //图片处理加速类型  0：vps、1: bpu、2: opencv
+
+  Process_Type process_type = Process_Type::RESIZE;
+  Image_Format img_fmt = Image_Format::MAT;
+  Speedup_Type speed_type = Speedup_Type::HOBOTCV_VPS;
 };
 
 #endif  // HOBOTCV_BENCHMARK_NODE_H
