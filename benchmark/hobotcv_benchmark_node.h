@@ -26,6 +26,11 @@
 #ifndef HOBOTCV_BENCHMARK_NODE_H
 #define HOBOTCV_BENCHMARK_NODE_H
 
+#define RED_COMMENT_START "\033[31m "
+#define RED_COMMENT_END " \033[0m"
+#define YELLOW_COMMENT_START "\033[33m "
+#define YELLOW_COMMENT_END "\033[0m"
+
 using rclcpp::NodeOptions;
 
 enum class Speedup_Type { HOBOTCV_VPS = 0, HOBOTCV_BPU = 1, OPENCV = 2 };
@@ -50,6 +55,13 @@ class hobotcv_benchmark_node : public rclcpp::Node {
 
   // opencv rotate
   void opencv_rotate_benchmark(cv::Mat &src);
+
+  void print_benchmark_log(std::string &method,
+                           float min,
+                           float max,
+                           float total,
+                           float fps_data,
+                           int static_cycle);
 
  private:
   std::string image_file = "config/test.jpg";  //输入图片路径

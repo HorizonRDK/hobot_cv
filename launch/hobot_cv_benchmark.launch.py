@@ -39,8 +39,24 @@ def generate_launch_description():
     img_fmt_launch_arg = DeclareLaunchArgument(
         "img_fmt",default_value=TextSubstitution(text="0")
     )
-    speed_type_launch_arg = DeclareLaunchArgument(
-        "speed_type",default_value=TextSubstitution(text="0")
+    speedup_type_launch_arg = DeclareLaunchArgument(
+        "speedup_type",default_value=TextSubstitution(text="0")
+    )
+
+    hobotcv_benchmark_node = Node(
+        package='hobot_cv',
+        executable='hobotcv_benchmark',
+        output='screen',
+        parameters=[
+            {"image_file": LaunchConfiguration('image_file')},
+            {"rotation": LaunchConfiguration('rotation')},
+            {"dst_width": LaunchConfiguration('dst_width')},
+            {"dst_height": LaunchConfiguration('dst_height')},
+            {"process_type": LaunchConfiguration('process_type')},
+            {"img_fmt": LaunchConfiguration('img_fmt')},
+            {"speedup_type": LaunchConfiguration('speedup_type')}
+        ],
+        arguments=['--ros-args', '--log-level', 'info']
     )
 
 
@@ -51,20 +67,6 @@ def generate_launch_description():
         dst_height_launch_arg,
         process_type_launch_arg,
         img_fmt_launch_arg,
-        speed_type_launch_arg,
-        Node(
-            package='hobot_cv',
-            executable='hobotcv_benchmark',
-            output='screen',
-            parameters=[
-                {"image_file": LaunchConfiguration('image_file')},
-                {"rotation": LaunchConfiguration('rotation')},
-                {"dst_width": LaunchConfiguration('dst_width')},
-                {"dst_height": LaunchConfiguration('dst_height')},
-                {"process_type": LaunchConfiguration('process_type')},
-                {"img_fmt": LaunchConfiguration('img_fmt')},
-                {"speed_type": LaunchConfiguration('speed_type')}
-            ],
-            arguments=['--ros-args', '--log-level', 'info']
-        )
+        speedup_type_launch_arg,
+        hobotcv_benchmark_node
     ])
