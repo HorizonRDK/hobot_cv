@@ -1,6 +1,6 @@
 # 功能介绍
 
-hobotcv_benchmark是hobot_cv vps和bpu以及opencv对图片处理耗时统计的工具。hobotcv_benchmark每调用100次输出一次帧率以及单帧延时的最大值、最小值和平均值。用户可以通过更改启动参数，配置不同的加速方式以及不同的图片操作。图像数据来源于本地图片回灌。
+hobotcv_benchmark是hobot_cv vps和bpu以及opencv对图片处理耗时统计的工具。hobotcv_benchmark默认每调用1000次输出一次帧率以及单帧延时的最大值、最小值和平均值。用户可以通过更改启动参数，配置不同的加速方式以及不同的图片操作。图像数据来源于本地图片回灌。
 
 # 编译
 
