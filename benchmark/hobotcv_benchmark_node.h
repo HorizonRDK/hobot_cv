@@ -56,12 +56,8 @@ class hobotcv_benchmark_node : public rclcpp::Node {
   // opencv rotate
   void opencv_rotate_benchmark(cv::Mat &src);
 
-  void print_benchmark_log(std::string &method,
-                           float min,
-                           float max,
-                           float total,
-                           float fps_data,
-                           int static_cycle);
+  void print_benchmark_log(
+      std::string &method, float min, float max, float total, float fps_data);
 
  private:
   std::string image_file = "config/test.jpg";  //输入图片路径
@@ -74,6 +70,8 @@ class hobotcv_benchmark_node : public rclcpp::Node {
   int process_type_in = 0;  //图片操作type，0: resize 1:rotate
   int img_fmt_in = 0;  // hobot_cv接口输入输出图片格式  0：cv::Mat   1: nv12
   int speedup_type_in = 0;  //图片处理加速类型  0：vps、1: bpu、2: opencv
+
+  int static_cycle = 1000;
 
   Process_Type process_type = Process_Type::RESIZE;
   Image_Format img_fmt = Image_Format::MAT;

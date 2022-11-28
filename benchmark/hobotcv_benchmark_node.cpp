@@ -23,6 +23,9 @@ hobotcv_benchmark_node::hobotcv_benchmark_node(
   this->declare_parameter<std::string>("image_file", image_file);
   this->get_parameter<std::string>("image_file", image_file);
 
+  this->declare_parameter<int>("static_cycle", static_cycle);
+  this->get_parameter<int>("static_cycle", static_cycle);
+
   this->declare_parameter<int>("dst_width", dst_width);
   this->get_parameter<int>("dst_width", dst_width);
 
@@ -82,6 +85,9 @@ hobotcv_benchmark_node::hobotcv_benchmark_node(
   RCLCPP_WARN(rclcpp::get_logger("hobot_cv benchmark"), "%s", ss.str().c_str());
 
   cv::Mat bgr_mat = cv::imread(image_file, cv::IMREAD_COLOR);
+  src_height = bgr_mat.rows;
+  src_width = bgr_mat.cols;
+  
   cv::Mat srcmat_nv12;
   BGRToNv12(bgr_mat, srcmat_nv12);
   if (process_type == Process_Type::RESIZE) {
@@ -110,8 +116,7 @@ void hobotcv_benchmark_node::print_benchmark_log(std::string &method,
                                                  float min,
                                                  float max,
                                                  float total_latency,
-                                                 float fps_data,
-                                                 int static_cycle) {
+                                                 float fps_data) {
   auto avg_data = (total_latency - max - min) / (static_cycle - 2);
   if (process_type == Process_Type::RESIZE) {
     std::cout << YELLOW_COMMENT_START << method << " resize " << src_width
@@ -199,7 +204,7 @@ void hobotcv_benchmark_node::hobotcv_resize_benchmark(cv::Mat &src) {
     max_inter = max_inter > interval ? max_inter : interval;
     latency += interval;
     index++;
-    if (index % 100 == 0) {
+    if (index % static_cycle == 0) {
       end_ts = std::chrono::steady_clock::now();
       float total_interval =
           static_cast<float>(
@@ -207,8 +212,8 @@ void hobotcv_benchmark_node::hobotcv_resize_benchmark(cv::Mat &src) {
                                                                     start_ts)
                   .count()) /
           1000.0;
-      auto fps_data = (1000.0 * 100 / total_interval);
-      print_benchmark_log(method, min_inter, max_inter, latency, fps_data, 100);
+      auto fps_data = (1000.0 * static_cycle / total_interval);
+      print_benchmark_log(method, min_inter, max_inter, latency, fps_data);
       min_inter = 10000.0;
       max_inter = 0.0;
       latency = 0.0;
@@ -267,7 +272,7 @@ void hobotcv_benchmark_node::hobotcv_rotate_benchmark(cv::Mat &src) {
     max_inter = max_inter > interval ? max_inter : interval;
     latency += interval;
     index++;
-    if (index % 100 == 0) {
+    if (index % static_cycle == 0) {
       end_ts = std::chrono::steady_clock::now();
       float total_interval =
           static_cast<float>(
@@ -275,8 +280,8 @@ void hobotcv_benchmark_node::hobotcv_rotate_benchmark(cv::Mat &src) {
                                                                     start_ts)
                   .count()) /
           1000.0;
-      auto fps_data = (1000.0 * 100 / total_interval);
-      print_benchmark_log(method, min_inter, max_inter, latency, fps_data, 100);
+      auto fps_data = (1000.0 * static_cycle / total_interval);
+      print_benchmark_log(method, min_inter, max_inter, latency, fps_data);
       min_inter = 10000.0;
       max_inter = 0.0;
       latency = 0.0;
@@ -306,7 +311,7 @@ void hobotcv_benchmark_node::opencv_resize_benchmark(cv::Mat &src) {
     max_inter = max_inter > interval ? max_inter : interval;
     latency += interval;
     index++;
-    if (index % 100 == 0) {
+    if (index % static_cycle == 0) {
       end_ts = std::chrono::steady_clock::now();
       float total_interval =
           static_cast<float>(
@@ -314,8 +319,8 @@ void hobotcv_benchmark_node::opencv_resize_benchmark(cv::Mat &src) {
                                                                     start_ts)
                   .count()) /
           1000.0;
-      auto fps_data = (1000.0 * 100 / total_interval);
-      print_benchmark_log(method, min_inter, max_inter, latency, fps_data, 100);
+      auto fps_data = (1000.0 * static_cycle / total_interval);
+      print_benchmark_log(method, min_inter, max_inter, latency, fps_data);
       min_inter = 10000.0;
       max_inter = 0.0;
       latency = 0.0;
@@ -353,7 +358,7 @@ void hobotcv_benchmark_node::opencv_rotate_benchmark(cv::Mat &src) {
     max_inter = max_inter > interval ? max_inter : interval;
     latency += interval;
     index++;
-    if (index % 100 == 0) {
+    if (index % static_cycle == 0) {
       end_ts = std::chrono::steady_clock::now();
       float total_interval =
           static_cast<float>(
@@ -361,8 +366,8 @@ void hobotcv_benchmark_node::opencv_rotate_benchmark(cv::Mat &src) {
                                                                     start_ts)
                   .count()) /
           1000.0;
-      auto fps_data = (1000.0 * 100 / total_interval);
-      print_benchmark_log(method, min_inter, max_inter, latency, fps_data, 100);
+      auto fps_data = (1000.0 * static_cycle / total_interval);
+      print_benchmark_log(method, min_inter, max_inter, latency, fps_data);
       min_inter = 10000.0;
       max_inter = 0.0;
       latency = 0.0;

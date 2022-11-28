@@ -30,7 +30,8 @@ hobotcv_benchmark是hobot_cv vps和bpu以及opencv对图片处理耗时统计的
 | rotation        | 旋转角度                       |      90/180/270               |      180         |
 | process_type    | 图片处理操作                   |   0: resize 1: rotate          |      0           |
 | img_fmt         | hobot_cv接口输入输出图片格式    |   0：cv::Mat  1: nv12          |      0           |
-| speedup_type      | 图片处理加速方式                |   0:vps 1:bpu 2:opencv        |      0            |
+| speedup_type    | 图片处理加速方式                |   0:vps 1:bpu 2:opencv        |      0          |
+| static_cycle    | 一个周期处理图片个数            |   int                         |      1000         |
 
 
 ## 运行
@@ -88,7 +89,7 @@ ros2 launch hobot_cv hobot_cv_benchmark.launch.py speedup_type:=2 process_type:=
 [hobotcv_benchmark-1]  hobotcv VPS mat resize 1920x1080 to 960x540 latency: [avg: 11.2604ms,  max: 11.837ms,  min: 11.111ms]
 
 ```
-根据log输出，benchmark测试了以hobotcv的vps加速方式，接口输入图片格式为cv::Mat。统计了将1920x1080的图片resize到960x540，每100次耗时的平均值，最大值以及最小值。
+根据log输出，benchmark测试了以hobotcv的vps加速方式，接口输入图片格式为cv::Mat。统计了将1920x1080的图片resize到960x540，每1000次耗时的平均值，最大值以及最小值，同时也输出了hobot_cv的输出帧率。
 
 ## 注意事项
 

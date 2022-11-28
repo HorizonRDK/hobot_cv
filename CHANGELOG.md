@@ -1,5 +1,9 @@
 # Changelog for package hobot_cv
 
+tros_1.1.4 (2022-11-28)
+------------------
+1. 添加hobot_cv_benchmark测试工具
+
 tros_1.1.3 (2022-11-16)
 ------------------
 1. hobot_cv增加padding功能接口

@@ -43,6 +43,10 @@ def generate_launch_description():
         "speedup_type",default_value=TextSubstitution(text="0")
     )
 
+    static_cycle_launch_arg = DeclareLaunchArgument(
+        "static_cycle",default_value=TextSubstitution(text="1000")
+    )
+
     hobotcv_benchmark_node = Node(
         package='hobot_cv',
         executable='hobotcv_benchmark',
@@ -54,7 +58,8 @@ def generate_launch_description():
             {"dst_height": LaunchConfiguration('dst_height')},
             {"process_type": LaunchConfiguration('process_type')},
             {"img_fmt": LaunchConfiguration('img_fmt')},
-            {"speedup_type": LaunchConfiguration('speedup_type')}
+            {"speedup_type": LaunchConfiguration('speedup_type')},
+            {"static_cycle": LaunchConfiguration('static_cycle')}
         ],
         arguments=['--ros-args', '--log-level', 'info']
     )
@@ -68,5 +73,6 @@ def generate_launch_description():
         process_type_launch_arg,
         img_fmt_launch_arg,
         speedup_type_launch_arg,
+        static_cycle_launch_arg,
         hobotcv_benchmark_node
     ])
