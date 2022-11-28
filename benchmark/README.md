@@ -103,3 +103,187 @@ sudo bash -c 'echo performance > /sys/devices/system/cpu/cpufreq/policy0/scaling
 2. 再通过 `top -p 进程id` 查看进程cpu占用以及内存占用
 
 查看benchmark进程bpu占用：`hrut_somstatus`
+
+
+## 不同负载测试对比
+
+使用hobot_cv benchmark工具测试，读取本地1920x1080分辨率图片，将1920x1080分辨率resize到512x512，一个周期处理图片个数static_cycle设置为1000。
+分别在以下case中统计VPS、BPU和OPENCV耗时最大值、最小值、平均值，输出帧率以及资源占比。统计数据不包含第一次处理需要配置硬件属性的时间。
+- case1：在无负载情况下测试
+- case2：启动测试程序，使CPU每个核的CPU占比约为50%。在CPU负载情况下测试。
+- case3：VPS负载，在已经启动了两个hobot_cv VPS加速程序情况下测试。
+- case4：BPU负载35%（启动dnn程序推理fcos模型，CPU负载30%）
+- case5：BPU负载50%（启动dnn程序推理yolov5模型，CPU负载16.6%）
+
+<table>
+  <tr>
+    <th></th>
+    <th colspan="3">无负载</th>
+    <th colspan="3">CPU负载50%</th>
+    <th colspan="3">VPS负载</th>
+    <th colspan="3">BPU负载35%</th>
+    <th colspan="3">BPU负载50%</th>
+  </tr >
+  <tr>
+    <td >统计类型</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
+    <td>opencv</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
+    <td>opencv</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
+    <td>opencv</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
+    <td>opencv</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
+    <td>opencv</td>
+  </tr >
+  <tr >
+    <td>最大值(ms)</td>
+    <td>11.699</td>
+    <td>8.18</td>
+    <td>19.326</td>
+    <td>18.906</td>
+    <td>14.899</td>
+    <td>39.086</td>
+    <td>26.711</td>
+    <td>11.683</td>
+    <td>18.38</td>
+    <td>13.667</td>
+    <td>21.412</td>
+    <td>20.293</td>
+    <td>10.817</td>
+    <td>63.973</td>
+    <td>19.748</td>
+  </tr>
+  <tr >
+    <td>最小值(ms)</td>
+    <td>10.752</td>
+    <td>5.562</td>
+    <td>7.397</td>
+    <td>10.819</td>
+    <td>5.602</td>
+    <td>7.616</td>
+    <td>11.124</td>
+    <td>5.827</td>
+    <td>7.381</td>
+    <td>11.314</td>
+    <td>5.831</td>
+    <td>7.52</td>
+    <td>13.383</td>
+    <td>5.768</td>
+    <td>7.55</td>
+  </tr>
+  <tr >
+    <td>平均值(ms)</td>
+    <td>10.8882</td>
+    <td>5.79068</td>
+    <td>8.21311</td>
+    <td>10.946</td>
+    <td>5.945</td>
+    <td>16.55</td>
+    <td>15.66</td>
+    <td>6.6787</td>
+    <td>9.0663</td>
+    <td>11.658</td>
+    <td>8.418</td>
+    <td>10.264</td>
+    <td>11.333</td>
+    <td>10.714</td>
+    <td>9.2706</td>
+  </tr>
+  <tr >
+    <td>帧率(fps)</td>
+    <td>91.8155</td>
+    <td>172.546</td>
+    <td>121.567</td>
+    <td>91.2686</td>
+    <td>164.10</td>
+    <td>60.365</td>
+    <td>63.81</td>
+    <td>149.57</td>
+    <td>110.17</td>
+    <td>85.736</td>
+    <td>118.59</td>
+    <td>97.328</td>
+    <td>88.202</td>
+    <td>92.884</td>
+    <td>107.73</td>
+  </tr>
+  <tr >
+    <td>CPU占用(%)</td>
+    <td>20.3</td>
+    <td>71.1</td>
+    <td>380</td>
+    <td>20.3</td>
+    <td>67.9</td>
+    <td>210</td>
+    <td>17.3</td>
+    <td>71.8</td>
+    <td>355.6</td>
+    <td>33.1</td>
+    <td>54.5</td>
+    <td>324.8</td>
+    <td>23.2</td>
+    <td>44.2</td>
+    <td>350.2</td>
+  </tr>
+  <tr >
+    <td>30fps时CPU占用(%)</td>
+    <td>6.63</td>
+    <td>12.36</td>
+    <td>93.82</td>
+    <td>6.67</td>
+    <td>12.41</td>
+    <td>104.37</td>
+    <td>8.13</td>
+    <td>14.42</td>
+    <td>96.89</td>
+    <td>11.57</td>
+    <td>13.78</td>
+    <td>100.12</td>
+    <td>7.89</td>
+    <td>14.27</td>
+    <td>97.52</td>
+  </tr>
+  <tr >
+    <td>Ratio bpu0</td>
+    <td>0</td>
+    <td>35</td>
+    <td>0</td>
+    <td>0</td>
+    <td>34</td>
+    <td>0</td>
+    <td>0</td>
+    <td>34</td>
+    <td>0</td>
+    <td>35</td>
+    <td>61</td>
+    <td>34</td>
+    <td>44</td>
+    <td>62</td>
+    <td>41</td>
+  </tr>
+  <tr >
+    <td>Ratio bpu1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>33</td>
+    <td>35</td>
+    <td>33</td>
+    <td>43</td>
+    <td>49</td>
+    <td>47</td>
+  </tr>
+</table>
