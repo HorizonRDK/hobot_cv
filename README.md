@@ -390,6 +390,9 @@ int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 | dst | 均值滤波处理后输出数据矩阵 |
 | ksize | 均值滤波器模板大小，目前只支持3x3和5x5大小 |
 
+## hobotcv_benchmark
+[hobotcv_benchmark相关介绍](./benchmark/README.md)
+
 ## 运行
 - 编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行。
 

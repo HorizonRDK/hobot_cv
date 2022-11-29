@@ -107,6 +107,14 @@ target_link_libraries(test_gaussian_blur
   ${LINK_LIBS}
   ${PROJECT_NAME})
 
+add_executable(hobotcv_benchmark
+benchmark/main.cpp
+benchmark/hobotcv_benchmark_node.cpp)
+target_link_libraries(hobotcv_benchmark
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
+
 ament_target_dependencies(
   ${PROJECT_NAME}
   rclcpp
@@ -132,7 +140,7 @@ DESTINATION lib/)
 
 # Install executables
 install(
-  TARGETS example crop_example resize_example rotate_example pyramid_example padding_example test_gaussian_blur neon_example
+  TARGETS example crop_example resize_example rotate_example pyramid_example padding_example test_gaussian_blur neon_example hobotcv_benchmark
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
