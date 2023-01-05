@@ -87,7 +87,6 @@ hobotcv_benchmark_node::hobotcv_benchmark_node(
   cv::Mat bgr_mat = cv::imread(image_file, cv::IMREAD_COLOR);
   src_height = bgr_mat.rows;
   src_width = bgr_mat.cols;
-  
   cv::Mat srcmat_nv12;
   BGRToNv12(bgr_mat, srcmat_nv12);
   if (process_type == Process_Type::RESIZE) {
@@ -180,7 +179,7 @@ void hobotcv_benchmark_node::hobotcv_resize_benchmark(cv::Mat &src) {
   auto start_ts = std::chrono::steady_clock::now();
   auto end_ts = std::chrono::steady_clock::now();
 
-  while (1) {
+  while (rclcpp::ok()) {
     auto start = std::chrono::steady_clock::now();
     if (img_fmt == Image_Format::MAT) {
       hobot_cv::hobotcv_resize(
@@ -251,7 +250,7 @@ void hobotcv_benchmark_node::hobotcv_rotate_benchmark(cv::Mat &src) {
   int index = 0;
   auto start_ts = std::chrono::steady_clock::now();
   auto end_ts = std::chrono::steady_clock::now();
-  while (1) {
+  while (rclcpp::ok()) {
     auto start = std::chrono::steady_clock::now();
     if (img_fmt == Image_Format::MAT) {
       hobot_cv::hobotcv_rotate(src, rotate_mat, cv_rotation);
@@ -298,7 +297,7 @@ void hobotcv_benchmark_node::opencv_resize_benchmark(cv::Mat &src) {
   int index = 0;
   auto start_ts = std::chrono::steady_clock::now();
   auto end_ts = std::chrono::steady_clock::now();
-  while (1) {
+  while (rclcpp::ok()) {
     auto start = std::chrono::steady_clock::now();
     cv::resize(src, resized_mat, resized_mat.size(), 0, 0);
     auto end = std::chrono::steady_clock::now();
@@ -345,7 +344,7 @@ void hobotcv_benchmark_node::opencv_rotate_benchmark(cv::Mat &src) {
   int index = 0;
   auto start_ts = std::chrono::steady_clock::now();
   auto end_ts = std::chrono::steady_clock::now();
-  while (1) {
+  while (rclcpp::ok()) {
     auto start = std::chrono::steady_clock::now();
     cv::rotate(src, rotate_mat, opencv_rotation);
     auto end = std::chrono::steady_clock::now();
