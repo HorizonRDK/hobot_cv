@@ -1,5 +1,9 @@
 # Changelog for package hobot_cv
 
+tros_1.1.4rc1 (2022-1-5)
+------------------
+1. 修复benchmark进程无法用ctrl+c方式退出的问题。
+
 tros_1.1.4 (2022-11-28)
 ------------------
 1. 添加hobot_cv_benchmark测试工具
