@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/utils.h"
-
-#include <arm_neon.h>
 
 #include <chrono>
 #include <cstring>
@@ -22,6 +19,11 @@
 #include <iostream>
 
 #include "rclcpp/rclcpp.hpp"
+#ifndef PLATFORM_X86
+#include <arm_neon.h>
+#endif
+
+#include "utils.h"
 
 int prepareBpuResizeParam(int src_w, int src_h, int dst_w, int dst_h) {
   if (src_w % 2 != 0) {

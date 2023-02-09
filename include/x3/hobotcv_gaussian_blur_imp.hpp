@@ -15,14 +15,14 @@
 #ifndef HOBOTCV_INCLUDE_HOBOTCV_GAUSSIAN_BLUR_HPP_
 #define HOBOTCV_INCLUDE_HOBOTCV_GAUSSIAN_BLUR_HPP_
 
-#include "hobotcv_gaussian_blur.h"
-
 #include <vector>
 
 #include "dnn/hb_dnn.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
+
+#include "hobotcv_gaussian_blur.h"
 
 namespace hobotcv {
 

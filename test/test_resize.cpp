@@ -11,18 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <string>
 
-#include "hobotcv_imgproc/hobotcv_imgproc.h"
-#include "include/utils.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/opencv.hpp"
 #include "rclcpp/rclcpp.hpp"
+
+#include "hobotcv_imgproc/hobotcv_imgproc.h"
+#include "utils.h"
 
 void writeImg(cv::Mat &mat, std::string imgfile) {
   cv::Mat img_bgr;
@@ -64,6 +66,7 @@ int main() {
     writeImg(dstmat_nv12, "./resize.jpg");
   }
 
+  #ifndef PLATFORM_X86
   {  // resieze second
     auto before_resize = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_resize(
@@ -106,6 +109,6 @@ int main() {
       writeImg(dst_mat, "./nv12_interface_resize.jpg");
     }
   }
-
+  #endif
   return 0;
 }

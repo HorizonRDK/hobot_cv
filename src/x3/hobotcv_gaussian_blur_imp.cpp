@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hobotcv_gaussian_blur_imp.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -28,6 +26,8 @@
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
+
+#include "hobotcv_gaussian_blur_imp.hpp"
 
 namespace hobotcv {
 

@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "hobotcv_imgproc/hobotcv_front.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -25,6 +24,7 @@
 #include <sstream>
 #include <string>
 
+#include "hobotcv_imgproc/hobotcv_front.h"
 #include "utils.h"
 
 namespace hobot_cv {

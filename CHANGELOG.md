@@ -1,5 +1,9 @@
 # Changelog for package hobot_cv
 
+tros_1.1.5rc1 (2022-2-9)
+------------------
+1. 新增x86版本resize功能。
+
 tros_1.1.4rc1 (2022-1-5)
 ------------------
 1. 修复benchmark进程无法用ctrl+c方式退出的问题。
