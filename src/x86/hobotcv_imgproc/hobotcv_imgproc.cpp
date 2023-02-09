@@ -69,11 +69,6 @@ int hobotcv_resize(const cv::Mat &src,
   }
   dst = dst_tmp;
 
-
-  // // 2. .
-  // cv::resize(src, dst, cv::Size(dst_w, dst_h));
-  
-  std::cout << "finish resize" << std::endl;
   return 0;
 }
 
