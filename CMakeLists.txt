@@ -94,11 +94,11 @@ if(PLATFORM_X3)
 
   add_library(${PROJECT_NAME} SHARED
     src/utils.cpp
-    src/hobotcv_imgproc/hobotcv_imgproc.cpp
-    src/hobotcv_imgproc/hobotcv_front.cpp
-    src/hobotcv_imgproc/hobotcv_single.cpp
-    src/hobotcv_gaussian_blur.cpp
-    src/hobotcv_gaussian_blur_imp.cpp
+    src/x3/hobotcv_imgproc/hobotcv_imgproc.cpp
+    src/x3/hobotcv_imgproc/hobotcv_front.cpp
+    src/x3/hobotcv_imgproc/hobotcv_single.cpp
+    src/x3/hobotcv_gaussian_blur.cpp
+    src/x3/hobotcv_gaussian_blur_imp.cpp
   )
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
 
@@ -167,9 +167,9 @@ if(PLATFORM_X3)
 
   # Install include files
   install(
-    FILES include/hobotcv_imgproc/hobotcv_imgproc.h
-    FILES include/hobotcv_gaussian_blur.h
-    FILES include/hobotcv_gaussian_blur_imp.hpp
+    FILES include/x86/hobotcv_imgproc/hobotcv_imgproc.h
+    FILES include/x86/hobotcv_gaussian_blur.h
+    FILES include/x86/hobotcv_gaussian_blur_imp.hpp
     FILES thirdparty/include/hobotcv_neon_blur.h
     DESTINATION include/${PROJECT_NAME}/
   )
