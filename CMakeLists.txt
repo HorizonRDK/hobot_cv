@@ -167,9 +167,9 @@ if(PLATFORM_X3)
 
   # Install include files
   install(
-    FILES include/x86/hobotcv_imgproc/hobotcv_imgproc.h
-    FILES include/x86/hobotcv_gaussian_blur.h
-    FILES include/x86/hobotcv_gaussian_blur_imp.hpp
+    FILES include/x3/hobotcv_imgproc/hobotcv_imgproc.h
+    FILES include/x3/hobotcv_gaussian_blur.h
+    FILES include/x3/hobotcv_gaussian_blur_imp.hpp
     FILES thirdparty/include/hobotcv_neon_blur.h
     DESTINATION include/${PROJECT_NAME}/
   )
