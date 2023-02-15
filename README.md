@@ -7,25 +7,24 @@ hobot_cv package是地平线机器人开发平台的一部分，为应用开发�
 
 hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
+# 开发环境
+
+- 编程语言: C/C++
+- 开发平台: X3/X86
+- 系统版本：Ubuntu 20.04
+- 编译工具链:Linux GCC 9.3.0/Linaro GCC 9.3.0
+
 # 编译
+
+- X3版本：支持在X3 Ubuntu系统上编译和在PC上使用docker交叉编译两种方式。
+- X86版本：支持在X86 Ubuntu系统上编译一种方式。
 
 ## 依赖库
 
 - dnn:1.8.4
 - opencv:3.4.5
 
-## 开发环境
-
-- 编程语言: C/C++
-- 开发平台: X3/X86
-- 系统版本：Ubuntu 20.0.4
-- 编译工具链:Linux GCC 9.3.0/Linaro GCC 9.3.0
-
-## 编译
-
-支持在X3 Ubuntu系统上编译和在PC上使用docker交叉编译两种方式。
-
-### X3 Ubuntu系统上编译
+## X3 Ubuntu系统上编译 X3版本
 
 1、编译环境确认
 
@@ -37,7 +36,7 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
 - 编译命令：`colcon build --packages-select hobot_cv`
 
-### docker交叉编译
+## docker交叉编译 X3版本
 
 1、编译环境确认
 
@@ -47,7 +46,7 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
 
 - 编译命令：
 
-  ```
+  ```shell
   export TARGET_ARCH=aarch64
   export TARGET_TRIPLE=aarch64-linux-gnu
   export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
@@ -58,6 +57,26 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
      --cmake-args \
      --no-warn-unused-cli \
      -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
+  ```
+
+## X86 Ubuntu系统上编译 X86版本
+
+1、编译环境确认
+
+  x86 ubuntu版本: ubuntu20.04
+  
+2、编译
+
+- 编译命令：
+
+  ```shell
+  colcon build --packages-select hobot_cv \
+     --merge-install \
+     --cmake-force-configure \
+     --cmake-args \
+     --no-warn-unused-cli \
+     -DPLATFORM_X86=ON \
+     -DTHIRD_PARTY=`pwd`/../sysroot_docker
   ```
 
 ## 注意事项
@@ -437,6 +456,23 @@ ros2 run hobot_cv test_gaussian_blur
 # 运行模式3：
 使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波与均值滤波，采用neon加速。
 ros2 run hobot_cv neon_example
+
+```
+
+## X86 Ubuntu系统上运行
+
+```
+export COLCON_CURRENT_PREFIX=./install
+source ./install/local_setup.bash
+# config中为example使用的模型，回灌使用的本地图片
+# 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
+cp -r install/lib/hobot_cv/config/ .
+
+# 设置运行环境变量
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`/../sysroot_docker/usr_86/lib
+
+# 启动resize launch文件
+ros2 launch hobot_cv hobot_cv_resize.launch.py
 
 ```
 

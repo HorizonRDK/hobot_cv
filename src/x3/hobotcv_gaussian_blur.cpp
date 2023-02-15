@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hobotcv_gaussian_blur.h"
-
 #include <iostream>
 
+#include "hobotcv_gaussian_blur.h"
 #include "hobotcv_gaussian_blur_imp.hpp"
 
 int32_t HobotCVGaussianBlurCreate(HobotGaussianBlurParam param,

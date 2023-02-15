@@ -33,7 +33,6 @@
 #include <string>
 
 #include "dnn/hb_dnn.h"
-#include "hobotcv_imgproc/hobotcv_imgproc.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
@@ -42,6 +41,8 @@
 #include "vio/hb_vio_interface.h"
 #include "vio/hb_vp_api.h"
 #include "vio/hb_vps_api.h"
+
+#include "hobotcv_imgproc/hobotcv_imgproc.h"
 
 namespace hobot_cv {
 
