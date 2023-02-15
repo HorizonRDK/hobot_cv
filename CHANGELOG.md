@@ -1,6 +1,6 @@
 # Changelog for package hobot_cv
 
-tros_1.1.5rc1 (2022-2-9)
+tros_1.1.6 (2022-2-20)
 ------------------
 1. 新增x86版本resize功能。
 
