@@ -281,6 +281,10 @@ elseif(PLATFORM_X86)
   install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/)
 
+  install(FILES
+  ${SYS_ROOT}/usr/lib/libopencv_world.so.3.4
+  DESTINATION lib/)
+
   # Install include files
   # install(
   #   FILES include/hobotcv_imgproc/hobotcv_imgproc.h

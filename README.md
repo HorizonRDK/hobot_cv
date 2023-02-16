@@ -468,8 +468,6 @@ source ./install/local_setup.bash
 # 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
 cp -r install/lib/hobot_cv/config/ .
 
-# 设置运行环境变量
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`/../sysroot_docker/usr_86/lib
 
 # 启动resize launch文件
 ros2 launch hobot_cv hobot_cv_resize.launch.py
