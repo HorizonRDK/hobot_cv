@@ -66,7 +66,7 @@ int main() {
     writeImg(dstmat_nv12, "./resize.jpg");
   }
 
-  #ifndef PLATFORM_X86
+  #ifdef PLATFORM_X3
   {  // resieze second
     auto before_resize = std::chrono::system_clock::now();
     auto ret = hobot_cv::hobotcv_resize(

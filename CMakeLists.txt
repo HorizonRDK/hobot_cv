@@ -53,6 +53,11 @@ elseif(PLATFORM_X86)
   add_definitions(-DPLATFORM_X86)
   set(PREFIX_PATH x86)
   set(SYS_ROOT ${THIRD_PARTY})
+elseif(PLATFORM_J5)
+  message("build platform j5")
+  add_definitions(-DPLATFORM_J5)
+  set(PREFIX_PATH j5)
+  set(SYS_ROOT ${THIRD_PARTY})
 else()
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
     message("invalid platform, build platform X3 default")
@@ -318,6 +323,63 @@ elseif(PLATFORM_X86)
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   )
 
+
+  # Install config
+  install(DIRECTORY
+  ${PROJECT_SOURCE_DIR}/config/
+  DESTINATION lib/${PROJECT_NAME}/config/
+  )
+
+  install(DIRECTORY
+  ${PROJECT_SOURCE_DIR}/launch/
+  DESTINATION share/${PROJECT_NAME}/launch)
+
+  # Causes the visibility macros to use dllexport rather than dllimport,
+  # which is appropriate when building the dll but not consuming it.
+  target_compile_definitions(${PROJECT_NAME}
+  PRIVATE "RCLCPP_BUILDING_LIBRARY")
+
+  install(
+  TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  )
+elseif(PLATFORM_J5)
+  add_library(${PROJECT_NAME} SHARED
+    src/utils.cpp
+    src/j5/hobotcv_imgproc/hobotcv_imgproc.cpp
+  )
+  target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
+
+  add_executable(resize_example test/test_resize.cpp)
+  target_link_libraries(resize_example
+  ${LINK_LIBS}
+  ${PROJECT_NAME}
+  ${VPS_LIBS})
+
+  ament_target_dependencies(
+    ${PROJECT_NAME}
+    rclcpp
+  )
+
+  # Install libraries
+  install(TARGETS ${PROJECT_NAME}
+  DESTINATION lib/)
+
+  install(FILES
+  ${SYS_ROOT}/usr/lib/libopencv_world.so.3.4
+  DESTINATION lib/)
+
+  install(
+    FILES include/j5/hobotcv_imgproc/hobotcv_imgproc.h
+    DESTINATION include/${PROJECT_NAME}/
+  )
+
+  install(
+  TARGETS resize_example
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  )
 
   # Install config
   install(DIRECTORY
