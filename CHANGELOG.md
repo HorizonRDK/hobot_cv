@@ -1,5 +1,10 @@
 # Changelog for package hobot_cv
 
+tros_2.0.0 (2023-05-11)
+------------------
+1. 更新package.xml，支持应用独立打包
+2. 更新应用启动launch脚本
+
 tros_1.1.6a (2023-2-16)
 ------------------
 1. 新增x86版本resize功能
