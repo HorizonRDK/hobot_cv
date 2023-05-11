@@ -12,39 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from argparse import Action
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
 
+
 def generate_launch_description():
     img_file_launch_arg = DeclareLaunchArgument(
         "image_file", default_value=TextSubstitution(text="config/test.jpg")
     )
     rotation_launch_arg = DeclareLaunchArgument(
-        "rotation",default_value=TextSubstitution(text="180")
+        "rotation", default_value=TextSubstitution(text="180")
     )
     dst_width_launch_arg = DeclareLaunchArgument(
-        "dst_width",default_value=TextSubstitution(text="960")
+        "dst_width", default_value=TextSubstitution(text="960")
     )
     dst_height_launch_arg = DeclareLaunchArgument(
-        "dst_height",default_value=TextSubstitution(text="540")
+        "dst_height", default_value=TextSubstitution(text="540")
     )
     process_type_launch_arg = DeclareLaunchArgument(
-        "process_type",default_value=TextSubstitution(text="0")
+        "process_type", default_value=TextSubstitution(text="0")
     )
     img_fmt_launch_arg = DeclareLaunchArgument(
-        "img_fmt",default_value=TextSubstitution(text="0")
+        "img_fmt", default_value=TextSubstitution(text="0")
     )
     speedup_type_launch_arg = DeclareLaunchArgument(
-        "speedup_type",default_value=TextSubstitution(text="0")
+        "speedup_type", default_value=TextSubstitution(text="0")
     )
 
     static_cycle_launch_arg = DeclareLaunchArgument(
-        "static_cycle",default_value=TextSubstitution(text="1000")
+        "static_cycle", default_value=TextSubstitution(text="1000")
     )
 
     hobotcv_benchmark_node = Node(
@@ -63,7 +62,6 @@ def generate_launch_description():
         ],
         arguments=['--ros-args', '--log-level', 'info']
     )
-
 
     return LaunchDescription([
         img_file_launch_arg,
