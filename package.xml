@@ -15,6 +15,7 @@
   <depend>rclcpp</depend>
 
   <depend condition="$PLATFORM == X3">hobot-multimedia-dev</depend>
+  <depend condition="$PLATFORM == J5">hobot-multimedia-dev</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
