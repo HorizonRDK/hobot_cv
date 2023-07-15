@@ -36,7 +36,7 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 
-# x3|j5|x86
+# x3|x5ultra|x86
 set(PREFIX_PATH x3)
 set(SYS_ROOT ${CMAKE_SYSROOT})
 
@@ -44,19 +44,19 @@ if(PLATFORM_X3)
   message("build platform X3")
   add_definitions(-DPLATFORM_X3)
   set(PREFIX_PATH x3)
-elseif(PLATFORM_J5)
-  message("build platform J5")
-  add_definitions(-DPLATFORM_J5)
-  set(PREFIX_PATH j5)
+elseif(PLATFORM_X5ultra)
+  message("build platform X5ultra")
+  add_definitions(-DPLATFORM_X5ultra)
+  set(PREFIX_PATH x5ultra)
 elseif(PLATFORM_X86)
   message("build platform x86")
   add_definitions(-DPLATFORM_X86)
   set(PREFIX_PATH x86)
   set(SYS_ROOT ${THIRD_PARTY})
-elseif(PLATFORM_J5)
-  message("build platform j5")
-  add_definitions(-DPLATFORM_J5)
-  set(PREFIX_PATH j5)
+elseif(PLATFORM_X5ultra)
+  message("build platform x5ultra")
+  add_definitions(-DPLATFORM_X5ultra)
+  set(PREFIX_PATH x5ultra)
   set(SYS_ROOT ${THIRD_PARTY})
 else()
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
@@ -347,10 +347,10 @@ elseif(PLATFORM_X86)
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
   )
-elseif(PLATFORM_J5)
+elseif(PLATFORM_X5ultra)
   add_library(${PROJECT_NAME} SHARED
     src/utils.cpp
-    src/j5/hobotcv_imgproc/hobotcv_imgproc.cpp
+    src/x5ultra/hobotcv_imgproc/hobotcv_imgproc.cpp
   )
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
 
@@ -374,7 +374,7 @@ elseif(PLATFORM_J5)
   DESTINATION lib/)
 
   install(
-    FILES include/j5/hobotcv_imgproc/hobotcv_imgproc.h
+    FILES include/x5ultra/hobotcv_imgproc/hobotcv_imgproc.h
     DESTINATION include/${PROJECT_NAME}/
   )
 
