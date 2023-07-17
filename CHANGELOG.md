@@ -1,8 +1,12 @@
 # Changelog for package hobot_cv
 
+tros_2.1.1 (2023-07-14)
+------------------
+1. 规范X5ultra产品名。
+
 tros_2.1.0 (2023-07-07)
 ------------------
-1. 适配RDK J5平台，仅支持CPU resize功能。
+1. 适配RDK X5ultra平台，仅支持CPU resize功能。
 
 tros_2.0.0 (2023-05-11)
 ------------------
