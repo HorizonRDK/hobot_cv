@@ -36,7 +36,7 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 
-# x3|x5ultra|x86
+# x3|rdkultra|x86
 set(PREFIX_PATH x3)
 set(SYS_ROOT ${CMAKE_SYSROOT})
 
@@ -44,19 +44,19 @@ if(PLATFORM_X3)
   message("build platform X3")
   add_definitions(-DPLATFORM_X3)
   set(PREFIX_PATH x3)
-elseif(PLATFORM_X5ultra)
-  message("build platform X5ultra")
-  add_definitions(-DPLATFORM_X5ultra)
-  set(PREFIX_PATH x5ultra)
+elseif(PLATFORM_Rdkultra)
+  message("build platform Rdkultra")
+  add_definitions(-DPLATFORM_Rdkultra)
+  set(PREFIX_PATH rdkultra)
 elseif(PLATFORM_X86)
   message("build platform x86")
   add_definitions(-DPLATFORM_X86)
   set(PREFIX_PATH x86)
   set(SYS_ROOT ${THIRD_PARTY})
-elseif(PLATFORM_X5ultra)
-  message("build platform x5ultra")
-  add_definitions(-DPLATFORM_X5ultra)
-  set(PREFIX_PATH x5ultra)
+elseif(PLATFORM_Rdkultra)
+  message("build platform rdkultra")
+  add_definitions(-DPLATFORM_Rdkultra)
+  set(PREFIX_PATH rdkultra)
   set(SYS_ROOT ${THIRD_PARTY})
 else()
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
@@ -347,10 +347,10 @@ elseif(PLATFORM_X86)
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
   )
-elseif(PLATFORM_X5ultra)
+elseif(PLATFORM_Rdkultra)
   add_library(${PROJECT_NAME} SHARED
     src/utils.cpp
-    src/x5ultra/hobotcv_imgproc/hobotcv_imgproc.cpp
+    src/rdkultra/hobotcv_imgproc/hobotcv_imgproc.cpp
   )
   target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${VPS_LIBS} ${NEON_LIBS})
 
@@ -374,7 +374,7 @@ elseif(PLATFORM_X5ultra)
   DESTINATION lib/)
 
   install(
-    FILES include/x5ultra/hobotcv_imgproc/hobotcv_imgproc.h
+    FILES include/rdkultra/hobotcv_imgproc/hobotcv_imgproc.h
     DESTINATION include/${PROJECT_NAME}/
   )
 
