@@ -637,8 +637,8 @@ int hobotcv_front::prepareResizeParam(int src_width,
     }
     return -1;
   }
-  this->src_h = src_height;
-  this->src_w = src_width;
+  this->src_h = resize_src_height;
+  this->src_w = resize_src_width;
   this->dst_h = dst_height;
   this->dst_w = dst_width;
   return 0;
@@ -1125,9 +1125,9 @@ int hobotcv_front::setChannelPyramidAttr() {
   return 0;
 }
 
-int hobotcv_front::sendVpsFrame(const char *src, int src_h, int src_w) {
-  int input_w = src_w;
-  int input_h = src_h;
+int hobotcv_front::sendVpsFrame(const char *src, int h, int w) {
+  int input_w = w;
+  int input_h = h;
   std::unique_lock<std::mutex> lk(observe->group_map_mtx);
   if (roi.cropEnable == 1) {  // crop区域作为vps输入源
     auto srcdata = reinterpret_cast<const uint8_t *>(src);
