@@ -168,6 +168,14 @@ if(PLATFORM_X3)
     rclcpp
   )
 
+  target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+  target_link_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lib>
+  $<INSTALL_INTERFACE:lib>)
+
   # Install libraries
   install(TARGETS ${PROJECT_NAME}
     DESTINATION lib/)
@@ -284,6 +292,14 @@ elseif(PLATFORM_X86)
     rclcpp
   )
 
+  target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+  target_link_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lib>
+  $<INSTALL_INTERFACE:lib>)
+
   # Install libraries
   install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/)
@@ -365,6 +381,14 @@ elseif(PLATFORM_Rdkultra)
     rclcpp
   )
 
+  target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+  target_link_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lib>
+  $<INSTALL_INTERFACE:lib>)
+  
   # Install libraries
   install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/)
