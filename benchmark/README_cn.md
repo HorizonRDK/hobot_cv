@@ -1,67 +1,70 @@
-English| [简体中文](./README_cn.md)
+[English](./README.md) | 简体中文
 
-# Function Introduction
+# 功能介绍
 
-hobotcv_benchmark is a tool for statistical analysis of processing time for images using hobot_cv VPS, BPU, and OpenCV. By default, hobotcv_benchmark outputs the frame rate and the maximum, minimum, and average latency per frame every 1000 calls. Users can modify the startup parameters to configure different acceleration methods and image operations. Image data is sourced from local image feeds.
+hobotcv_benchmark是hobot_cv vps和bpu以及opencv对图片处理耗时统计的工具。hobotcv_benchmark默认每调用1000次输出一次帧率以及单帧延时的最大值、最小值和平均值。用户可以通过更改启动参数，配置不同的加速方式以及不同的图片操作。图像数据来源于本地图片回灌。
 
-# Compilation
+# 编译
 
-## Dependencies
+## 依赖库
 
 - hobot_cv package
 
-## Development Environment
+## 开发环境
 
-- Programming Language: C/C++
-- Development Platform: X3/X86
-- System Version: Ubuntu 20.0.4
-- Compilation Toolchain: Linux GCC 9.3.0 / Linaro GCC 9.3.0
+- 编程语言: C/C++
+- 开发平台: X3/X86
+- 系统版本：Ubuntu 20.0.4
+- 编译工具链:Linux GCC 9.3.0/Linaro GCC 9.3.0
 
-# User Guide
 
-## Dependencies
+# 使用介绍
 
-## Parameters
+## 依赖
 
-| Parameter Name  | Meaning                     | Value                         | Default Value     |
-| --------------  | ---------------------------  | ----------------------------- | ----------------- |
-| image_file     | Path of the input image       | String                        | config/test.jpg   |
-| dst_width      | Width of output image after resize | Int                         | 960               |
-| dst_height     | Height of output image after resize | Int                        | 540               |
-| rotation       | Rotation angle                 | 90/180/270                    | 180               |
-| process_type   | Image processing operation     | 0: resize 1: rotate           | 0                 |
-| img_fmt        | Image format for hobot_cv interface | 0: cv::Mat 1: nv12        | 0                 |
-| speedup_type   | Image processing acceleration method | 0: VPS 1: BPU 2: OpenCV   | 0                 |
-| static_cycle   | Number of images processed in one cycle | Int                   | 1000               |
+## 参数
 
-## Execution
+| 参数名           | 含义                          | 取值                          | 默认值            |
+| --------------  | ----------------------------- | ----------------------------- | ----------------- |
+| image_file      | 输入图片的路径                 |         字符串                |   config/test.jpg |
+| dst_width       | resize后输出图片宽             |          int                  |      960         |
+| dst_height      | resize后输出图片高             |          int                  |      540         |
+| rotation        | 旋转角度                       |      90/180/270               |      180         |
+| process_type    | 图片处理操作                   |   0: resize 1: rotate          |      0           |
+| img_fmt         | hobot_cv接口输入输出图片格式    |   0：cv::Mat  1: nv12          |      0           |
+| speedup_type    | 图片处理加速方式                |   0:vps 1:bpu 2:opencv        |      0          |
+| static_cycle    | 一个周期处理图片个数            |   int                         |      1000         |
 
-To run, use ros2 run to start:
+
+## 运行
+
+运行方式1，使用ros2 run启动：
 
 ```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
 
-# Test benchmark data for resize using BPU acceleration method, interface type is cv::Mat data interface
+# 测试bpu加速方式进行resize的benchmark数据，接口类型为cv::Mat数据接口
 ros2 run hobot_cv hobotcv_benchmark --ros-args -p speedup_type:=1 -p img_fmt:=0 -p process_type:=0
 
 ```
 
-To run using launch file:```
+运行方式2，使用launch文件启动：
+```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/setup.bash
 
-# Start launch file
+# 启动launch文件
 ros2 launch hobot_cv hobot_cv_benchmark.launch.py
 
-# Calculate the time consumption of opencv resize
+# 统计opencv resize的耗时
 ros2 launch hobot_cv hobot_cv_benchmark.launch.py speedup_type:=2 process_type:=0 image_file:=config/test.jpg dst_width:=960 dst_height:=540
 
 ```
 
-## Result Analysis
-Launch Command: ros2 launch hobot_cv hobot_cv_benchmark.launch.py
-Output:
+## 结果分析
+启动命令：ros2 launch hobot_cv hobot_cv_benchmark.launch.py
+输出结果：
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [hobotcv_benchmark-1]: process started with pid [5796]
@@ -88,63 +91,66 @@ Output:
 [hobotcv_benchmark-1]  hobotcv VPS mat resize 1920x1080 to 960x540 latency: [avg: 11.2604ms,  max: 11.837ms,  min: 11.111ms]
 
 ```
-According to the log output, the benchmark test was conducted using the hobotcv vps acceleration method, with the input image format as cv::Mat. The average, maximum, and minimum time consumption for resizing 1920x1080 images to 960x540 every 1000 times was calculated, and the output frame rate of hobot_cv was also displayed.
+根据log输出，benchmark测试了以hobotcv的vps加速方式，接口输入图片格式为cv::Mat。统计了将1920x1080的图片resize到960x540，每1000次耗时的平均值，最大值以及最小值，同时也输出了hobot_cv的输出帧率。
 
-## Important Note
+## 注意事项
 
-Pay attention to the frequency lock when running:
+运行时需要注意锁频：
 ```
 sudo bash -c 'echo performance > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor'
-```To check the CPU usage of the benchmark process:
+```
 
-1. First use `ps -ef | grep hobotcv_benchmark` to check the process ID.
-2. Then use `top -p process id` to check the CPU usage and memory usage of the process.
+查看benchmark进程cpu占用：
+1. 先使用 `ps -ef | grep hobotcv_benchmark` 查看进程id
+2. 再通过 `top -p 进程id` 查看进程cpu占用以及内存占用
 
-To check the BPU usage of the benchmark process: `hrut_somstatus`
+查看benchmark进程bpu占用：`hrut_somstatus`
 
-## Comparison of Different Load Tests
 
-Using the hobot_cv benchmark tool for testing, reading local images with a resolution of 1920x1080, resizing the resolution to 512x512, with a static_cycle of 1000 for processing images in one cycle.
-Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, and OPENCV in the following cases, output the frame rate, and resource usage. The statistics do not include the time required for the initial hardware setup.
-- case1: Testing under no load condition
-- case2: Starting the test program to make the CPU usage of each core around 50%. Testing under CPU load condition.
-- case3: VPS load, testing with two hobot_cv VPS acceleration programs already started.
-- case4: BPU load 35% (starting dnn program to infer fcos model, CPU load 30%)
-- case5: BPU load 50% (starting dnn program to infer yolov5 model, CPU load 16.6%)
+## 不同负载测试对比
+
+使用hobot_cv benchmark工具测试，读取本地1920x1080分辨率图片，将1920x1080分辨率resize到512x512，一个周期处理图片个数static_cycle设置为1000。
+分别在以下case中统计VPS、BPU和OPENCV耗时最大值、最小值、平均值，输出帧率以及资源占比。统计数据不包含第一次处理需要配置硬件属性的时间。
+- case1：在无负载情况下测试
+- case2：启动测试程序，使CPU每个核的CPU占比约为50%。在CPU负载情况下测试。
+- case3：VPS负载，在已经启动了两个hobot_cv VPS加速程序情况下测试。
+- case4：BPU负载35%（启动dnn程序推理fcos模型，CPU负载30%）
+- case5：BPU负载50%（启动dnn程序推理yolov5模型，CPU负载16.6%）
 
 <table>
   <tr>
     <th></th>
-    <th colspan="3">No Load</th>
-    <th colspan="3">CPU Load 50%</th>
-    <th colspan="3">VPS Load</th>
-    <th colspan="3">BPU Load 35%</th>
-    <th colspan="3">BPU Load 50%</th>
+    <th colspan="3">无负载</th>
+    <th colspan="3">CPU负载50%</th>
+    <th colspan="3">VPS负载</th>
+    <th colspan="3">BPU负载35%</th>
+    <th colspan="3">BPU负载50%</th>
   </tr >
   <tr>
-    <td>Statistical Type</td>
-    <td>VPS Acceleration</td>
-    <td>BPU Acceleration</td>
+    <td >统计类型</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
     <td>opencv</td>
-    <td>VPS Acceleration</td>
-    <td>BPU Acceleration</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
     <td>opencv</td>
-    <td>VPS Acceleration</td>
-    <td>BPU Acceleration</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
     <td>opencv</td>
-    <td>VPS Acceleration</td>
-    <td>BPU Acceleration</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
     <td>opencv</td>
-    <td>VPS Acceleration</td>
-    <td>BPU Acceleration</td>
+    <td>VPS加速</td>
+    <td>BPU加速</td>
     <td>opencv</td>
   </tr >
   <tr >
-    <td>Maximum Value (ms)</td>
+    <td>最大值(ms)</td>
     <td>11.699</td>
     <td>8.18</td>
     <td>19.326</td>
-    <td>18.906</td>    <td>14.899</td>
+    <td>18.906</td>
+    <td>14.899</td>
     <td>39.086</td>
     <td>26.711</td>
     <td>11.683</td>
@@ -157,7 +163,7 @@ Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, 
     <td>19.748</td>
   </tr>
   <tr >
-    <td>Minimum Value (ms)</td>
+    <td>最小值(ms)</td>
     <td>10.752</td>
     <td>5.562</td>
     <td>7.397</td>
@@ -175,7 +181,7 @@ Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, 
     <td>7.55</td>
   </tr>
   <tr >
-    <td>Average Value (ms)</td>
+    <td>平均值(ms)</td>
     <td>10.8882</td>
     <td>5.79068</td>
     <td>8.21311</td>
@@ -193,7 +199,8 @@ Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, 
     <td>9.2706</td>
   </tr>
   <tr >
-    <td>Frame Rate (fps)</td>    <td>91.8155</td>
+    <td>帧率(fps)</td>
+    <td>91.8155</td>
     <td>172.546</td>
     <td>121.567</td>
     <td>91.2686</td>
@@ -210,7 +217,7 @@ Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, 
     <td>107.73</td>
   </tr>
   <tr >
-    <td>CPU Usage (%)</td>
+    <td>CPU占用(%)</td>
     <td>20.3</td>
     <td>71.1</td>
     <td>380</td>
@@ -228,7 +235,7 @@ Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, 
     <td>350.2</td>
   </tr>
   <tr >
-    <td>CPU Usage at 30fps (%)</td>
+    <td>30fps时CPU占用(%)</td>
     <td>6.63</td>
     <td>12.36</td>
     <td>93.82</td>
@@ -242,7 +249,8 @@ Calculate the maximum, minimum, and average time-consuming values for VPS, BPU, 
     <td>13.78</td>
     <td>100.12</td>
     <td>7.89</td>
-    <td>14.27</td>    <td>97.52</td>
+    <td>14.27</td>
+    <td>97.52</td>
   </tr>
   <tr >
     <td>Ratio bpu0</td>

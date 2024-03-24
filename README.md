@@ -1,73 +1,75 @@
+English| [简体中文](./README_cn.md)
+
 Getting Started with hobot_cv
 =======
 
-# 功能介绍
+# Feature Introduction
 
-hobot_cv package是地平线机器人开发平台的一部分，为应用开发提供了bpu和vps的图片处理加速接口。目前实现了图片的crop, resize, rotate，边界填充以及金字塔缩放功能，只支持nv12格式。
+The hobot_cv package is part of the Horizon Robotics robot development platform, providing image processing acceleration interfaces for bpu and vps for application development. Currently, functions such as image crop, resize, rotate, border padding, and pyramid scaling have been implemented, supporting only the nv12 format.
 
-hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
+hobot_cv Gaussian filtering and mean filtering interfaces support bpu and neon acceleration.
 
-# 开发环境
+# Development Environment
 
-- 编程语言: C/C++
-- 开发平台: X3/X86
-- 系统版本：Ubuntu 20.04
-- 编译工具链:Linux GCC 9.3.0/Linaro GCC 9.3.0
+- Programming Language: C/C++
+- Development Platform: X3/X86
+- System Version: Ubuntu 20.04
+- Compilation Toolchain: Linux GCC 9.3.0/Linaro GCC 9.3.0
 
-# 编译
+# Compilation
 
-- X3版本：支持在X3 Ubuntu系统上编译和在PC上使用docker交叉编译两种方式。
-- X86版本：支持在X86 Ubuntu系统上编译一种方式。
+- X3 Version: Supports two methods of compiling on the X3 Ubuntu system and cross-compiling using docker on a PC.
+- X86 Version: Supports one method of compiling on the X86 Ubuntu system.
 
-## 依赖库
+## Dependency Libraries
 
-- dnn:1.8.4
-- opencv:3.4.5
+- dnn: 1.8.4
+- opencv: 3.4.5
 
-## X3 Ubuntu系统上编译 X3版本
+## Compilation on X3 Ubuntu System for X3 Version
 
-1、编译环境确认
+1. Confirm Compilation Environment
 
-- 板端已安装X3 Ubuntu系统。
-- 当前编译终端已设置TogetherROS环境变量：`source PATH/setup.bash`。其中PATH为TogetherROS的安装路径。
-- 已安装ROS2编译工具colcon。安装的ROS不包含编译工具colcon，需要手动安装colcon。colcon安装命令：`pip install -U colcon-common-extensions`
+- X3 Ubuntu system is installed on the board side.
+- The current compilation terminal has set the TogetherROS environment variable: `source PATH/setup.bash`. Here, PATH is the installation path of TogetherROS.
+- ROS2 compilation tool colcon is installed. If the installed ROS does not include the compilation tool colcon, it needs to be manually installed. The command for installing colcon is: `pip install -U colcon-common-extensions`
 
-2、编译
+2. Compilation
 
-- 编译命令：`colcon build --packages-select hobot_cv`
+- Compilation command: `colcon build --packages-select hobot_cv`
 
-## docker交叉编译 X3版本
+## Cross-Compilation on X3 Version using Docker
 
-1、编译环境确认
+1. Confirm Compilation Environment
 
-- 在docker中编译，并且docker中已经安装好TogetherROS。docker安装、交叉编译说明、TogetherROS编译和部署说明详见机器人开发平台robot_dev_config repo中的README.md。
+- Compile in docker, and TogetherROS is already installed in docker. For docker installation, cross-compilation instructions, TogetherROS compilation, and deployment instructions, see the README.md in the robot development platform robot_dev_config repo.
 
-2、编译
+2. Compilation
 
-- 编译命令：
+- Compilation command:
 
   ```shell
-  export TARGET_ARCH=aarch64
-  export TARGET_TRIPLE=aarch64-linux-gnu
-  export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
+  export TARGET_ARCH=aarch64```shell
+export TARGET_TRIPLE=aarch64-linux-gnu
+export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
 
-  colcon build --packages-select hobot_cv \
-     --merge-install \
-     --cmake-force-configure \
-     --cmake-args \
-     --no-warn-unused-cli \
-     -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
-  ```
+colcon build --packages-select hobot_cv \
+   --merge-install \
+   --cmake-force-configure \
+   --cmake-args \
+   --no-warn-unused-cli \
+   -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
+```
 
-## X86 Ubuntu系统上编译 X86版本
+## Compiling X86 Version on X86 Ubuntu System
 
-1、编译环境确认
+1. Environment Confirmation
 
-  x86 ubuntu版本: ubuntu20.04
+   - X86 Ubuntu Version: Ubuntu 20.04
   
-2、编译
+2. Compilation
 
-- 编译命令：
+- Compilation Command:
 
   ```shell
   colcon build --packages-select hobot_cv \
@@ -79,406 +81,396 @@ hobot_cv高斯滤波和均值滤波接口，支持bpu和neon加速。
      -DTHIRD_PARTY=`pwd`/../sysroot_docker
   ```
 
-## 注意事项
-  目前hobot_cv crop&resize&rotate只支持nv12格式。
+## Notes
+  Currently, hobot_cv crop&resize&rotate only support nv12 format.
 
-  vps加速，对不同输入输出属性第一次处理会进行硬件属性的配置，耗时较长。如果配置属性不变，硬件直接处理，则耗时较低。如果配置完group属性后，超过10s没有输入对应此group的输入图片，hobot_cv会判定此输入group失活，group资源会被重新利用。group资源会与创建该group的进程绑定使用，并只在此进程内使用，进程结束，group自动释放。hobot_cv默认使用group4，group5，group6和group7这四个group，所以hobot_cv最多支持四个不同输入属性同时使用vps加速。
+  For VPS acceleration, the first processing of different input and output attributes will entail configuring hardware properties, which may take some time. If the properties remain unchanged and hardware direct processing is applied, the processing time will be lower. If there is no corresponding input image for a certain group within 10 seconds after configuring the group properties, hobot_cv will deem that input group inactive, and the group resources will be reused. Group resources are bound to the process that created the group and will only be used within that process. Once the process ends, the group will be automatically released. By default, hobot_cv uses group4, group5, group6, and group7, thus supporting a maximum of four different input properties simultaneously utilizing VPS acceleration.
 
-  VPS加速，输入输出图片最大4096*2160，最小32*32。最大支持1.5倍放大，1/8缩小。宽度需为16的倍数，高度需为偶数。
+  VPS acceleration supports input and output images with a maximum resolution of 4096*2160 and a minimum resolution of 32*32. It allows up to 1.5x enlargement and up to 1/8 reduction. The width must be a multiple of 16, and the height must be even.
 
-  BPU加速，缩放范围是dst/src取值[1/185,256), 输入宽度为[16,4080], 宽度需为2的倍数。输出尺寸要求w<=4080,h<=4080。
-  crop功能，crop区域必须在原图像内部。
+  For BPU acceleration, the scaling range is [1/185, 256) for dst/src ratio, the input width should be within [16, 4080], and the width must be a multiple of 2. The output size should satisfy w<=4080 and h<=4080.
+  When cropping, the crop area must be within the original image.
 
-# 使用介绍
+## User Guide
 
-## package说明
-  源码包含**hobot_cv package**，用户可通过hobot_cv提供的接口实现图片的crop，resize，rotate, 高斯滤波。
+### Package Description
+  The source code includes the **hobot_cv package**, allowing users to implement image crop, resize, rotate, and Gaussian blur through the interfaces provided by hobot_cv.
 
-  hobotcv提供的图片处理加速方式有bpu和vps加速。crop,resize可以选择使用bpu或vps加速，rotate和pyramid只能使用vps。
+  hobotcv offers both BPU and VPS acceleration for image processing. Crop and resize can be accelerated using BPU or VPS, while rotate and pyramid are exclusively accelerated using VPS.
 
-  如果用户需要低频处理图片则可以选择使用bpu加速，bpu加速不需要对硬件进行单独的属性配置，vps对硬件属性进行配置耗时较长。
+  Users can opt for BPU acceleration for less frequent image processing, as it does not require separate hardware property configuration. VPS acceleration, on the other hand, involves longer configuration of hardware properties.
+```If the camera captures images for crop & resize processing for model inference, you can choose to use VPS acceleration. In this case, the input-output configuration is relatively stable without major changes, and the normal image capture frequency of the camera will not trigger a timeout judgment.
 
-  如果是摄像头采集图片做crop&resize处理后用于模型推理则可以选择使用vps加速，这种情况下输入输出的配置相对稳定不会有大的变动，而且摄像头正常采集图片的频率也不会触发超时判断。
-
-## 接口说明
+## Interface Description
 
 ### resize
 
-int hobotcv_resize(const cv::Mat &src,int src_h,int src_w,cv::Mat &dst,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+int hobotcv_resize(const cv::Mat &src, int src_h, int src_w, cv::Mat &dst, int dst_h, int dst_w, HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
-功能介绍：nv12格式图片的resize功能。
+Function: Resize function for nv12 format images.
 
-返回值：成功返回0，失败返回非零。
+Return Value: Returns 0 on success, non-zero on failure.
 
-参数：
+Parameters:
 
-| 参数名 | 解释                 |
-| ------ | -------------------- |
-| src    | 原nv12格式的图像矩阵 |
-| src_h    | 原图高               |
-| sc_w     | 原图宽               |
-| dst    | resize后的图像矩阵   |
-| dst_h  | resize后的高         |
-| dst_w  | resize后的宽         |
-| type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+| Parameter | Explanation               |
+| --------- | -------------------------  |
+| src       | Original image matrix in nv12 format |
+| src_h     | Original image height      |
+| sc_w      | Original image width       |
+| dst       | Resized image matrix       |
+| dst_h     | Resized image height       |
+| dst_w     | Resized image width        |
+| type      | Enum type for interface acceleration. Default is HOBOTCV_AUTO, which does not support VPS acceleration for input-output. HOBOTCV_VPS for VPS acceleration, HOBOTCV_BPU for BPU acceleration |
 
-std::shared_ptr<ImageInfo> hobotcv_resize(const char *src,int src_h,int src_w,int dst_h,int dst_w,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+std::shared_ptr<ImageInfo> hobotcv_resize(const char *src, int src_h, int src_w, int dst_h, int dst_w, HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
-功能介绍：nv12格式图片的resize功能。输入输出图片数据为nv12数据的地址。
+Function: Resize function for nv12 format images. Input and output image data are addresses of nv12 data.
 
-返回值：成功返回resize后的图片数据地址，失败返回nullptr
+Return Value: Returns the address of the resized image data on success, nullptr on failure.
 
-参数：
+Parameters:
 
-| 参数名 | 解释                  |
-| ------ | -------------------- |
-| src    | 输入图片数据地址       |
-| src_h  | 输入图片高            |
-| sc_w   | 输入图片宽            |
-| dst_h  | resize后的高         |
-| dst_w  | resize后的宽         |
-| type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+| Parameter | Explanation                 |
+| --------- | ---------------------------- |
+| src       | Address of the input image data |
+| src_h     | Input image height           |
+| sc_w      | Input image width            |
+| dst_h     | Resized image height         |
+| dst_w     | Resized image width          |
+| type      | Enum type for interface acceleration. Default is HOBOTCV_AUTO, which does not support VPS acceleration for input-output. HOBOTCV_VPS for VPS acceleration, HOBOTCV_BPU for BPU acceleration |
 
-### crop&resize
+### crop & resize
 
-cv::Mat hobotcv_crop(cv::Mat &src,int src_h,int src_w,int dst_h,int dst_w,const cv::Range& rowRange,const cv::Range& colRange,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+cv::Mat hobotcv_crop(cv::Mat &src, int src_h, int src_w, int dst_h, int dst_w, const cv::Range& rowRange, const cv::Range& colRange, HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
-功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。
+Function: Resize the crop region to the target size. If the crop region is the same as the size after resizing, only cropping will occur.
 
-返回值：crop&resize之后的nv12图像矩阵。
+Return Value: The nv12 image matrix after crop & resize.
 
-注意：crop区域要在图片范围内
+Note: The crop region should be within the image range.Parameters:
+| Parameter Name | Explanation                |
+| -------------- | -------------------------- |
+| src            | Original image matrix in nv12 format  |
+| src_h          | Original image height       |
+| src_w          | Original image width        |
+| dst_h          | Height after resizing       |
+| dst_w          | Width after resizing        |
+| rowRange       | Vertical coordinate range for crop    |
+| colRange       | Horizontal coordinate range for crop  |
+| type           | Enumeration of interface acceleration types, default HOBOTCV_AUTO uses BPU acceleration for input/output that does not meet VPS acceleration. HOBOTCV_VPS for VPS acceleration, HOBOTCV_BPU for BPU acceleration |
 
-参数：
-| 参数名   | 解释                 |
-| -------- | --------------------|
-| src      | 原nv12格式的图像矩阵 |
-| src_h    | 原图高               |
-| sc_w     | 原图宽               |
-| dst_h    | resize后的高         |
-| dst_w    | resize后的宽         |
-| rowRange | crop的纵向坐标范围   |
-| colRange | crop的横向坐标范围   |
-| type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+std::shared_ptr<ImageInfo> hobotcv_crop(const char *src, int src_h, int src_w, int dst_h, int dst_w, const cv::Range &rowRange, const cv::Range &colRange, HobotcvSpeedUpType type = HOBOTCV_AUTO);
 
-std::shared_ptr<ImageInfo> hobotcv_crop(const char *src,int src_h,int src_w,int dst_h,int dst_w,const cv::Range &rowRange,const cv::Range &colRange,HobotcvSpeedUpType type = HOBOTCV_AUTO);
+Function: Resize the crop area to the target size. If the crop area is the same as the resized size, it will only crop. Input and output image data is the address of nv12 data.
 
-功能介绍：将crop区域resize到目标大小。如果crop区域与resize后的大小一致，则只会crop。输入输出图片数据为nv12数据的地址。
+Return Value: Returns the address of the cropped and resized image data if successful, or nullptr if failed.
 
-返回值：成功返回crop&resize后的图片数据地址，失败返回nullptr
+Note: The crop area must be within the image range
 
-注意：crop区域要在图片范围内
-
-参数：
-| 参数名   | 解释                 |
-| -------- | --------------------|
-| src      | 输入图片数据地址      |
-| src_h    | 输入图片高           |
-| sc_w     | 输入图片宽           |
-| dst_h    | resize后的高         |
-| dst_w    | resize后的宽         |
-| rowRange | crop的纵向坐标范围   |
-| colRange | crop的横向坐标范围   |
-| type | 接口加速类型枚举，默认HOBOTCV_AUTO不符合vps加速的输入输出采用bpu加速。HOBOTCV_VPS为vps加速，HOBOTCV_BPU为bpu加速|
+Parameters:
+| Parameter Name | Explanation                |
+| -------------- | -------------------------- |
+| src            | Input image data address    |
+| src_h          | Input image height          |
+| src_w          | Input image width           |
+| dst_h          | Height after resizing       |
+| dst_w          | Width after resizing        |
+| rowRange       | Vertical coordinate range for crop    |
+| colRange       | Horizontal coordinate range for crop  |
+| type           | Enumeration of interface acceleration types, default HOBOTCV_AUTO uses BPU acceleration for input/output that does not meet VPS acceleration. HOBOTCV_VPS for VPS acceleration, HOBOTCV_BPU for BPU acceleration |
 
 ### rotate
 
 int hobotcv_rotate(const cv::Mat &src, cv::Mat &dst, ROTATION_E rotate);
 
-功能介绍：将传入的图片进行旋转，只支持90，180，270度的旋转。采用vps加速。
+Function: Rotate the input image, supporting only 90, 180, 270 degrees rotation. Uses VPS acceleration.
 
-返回值：成功返回0，失败返回非零。
+Return Value: Returns 0 if successful, non-zero if failed.
 
-参数：
-| 参数名   | 解释                 |
-| -------- | -------------------- |
-| src      | 原nv12格式的图像矩阵 |
-| dst      | 旋转后的图像矩阵   |
-| rotate   | 旋转角度的枚举  |
+Parameters:
+| Parameter Name | Explanation                |
+| -------------- | -------------------------- |
+| src            | Original image matrix in nv12 format  |
+| dst            | Image matrix after rotation   |
+| rotate         | Enumeration of rotation angle  |
 
-std::shared_ptr<ImageInfo> hobotcv_rotate(const char *src,int src_h,int src_w,ROTATION_E rotate);
+std::shared_ptr<ImageInfo> hobotcv_rotate(const char *src, int src_h, int src_w, ROTATION_E rotate);Function Introduction: Rotate the incoming image, supporting only 90, 180, 270-degree rotations. Accelerated by VPS. Input and output image data is in the form of nv12 data.
 
-功能介绍：将传入的图片进行旋转，只支持90，180，270度的旋转。采用vps加速。输入输出图片数据为nv12数据的地址。
+Return Value: Returns the address of the rotated image data if successful, returns nullptr if failed.
 
-返回值：成功返回旋转后的图片数据地址，失败返回nullptr
-
-参数：
-| 参数名   | 解释                 |
-| -------- | --------------------|
-| src      | 输入图片数据地址      |
-| src_h    | 输入图片高           |
-| src_w     | 输入图片宽           |
-| rotate   | 旋转角度             |
+Parameters:
+| Parameter    | Explanation            |
+| ------------ | ---------------------- |
+| src          | Address of the input image data |
+| src_h        | Height of the input image |
+| src_w        | Width of the input image |
+| rotate       | Rotation angle          |
 
 ### crop&resize&rotate
 
-int hobotcv_imgproc(const cv::Mat &src,cv::Mat &dst,int dst_h,int dst_w,ROTATION_E rotate,const cv::Range &rowRange,const cv::Range &colRange);
+int hobotcv_imgproc(const cv::Mat &src, cv::Mat &dst, int dst_h, int dst_w, ROTATION_E rotate, const cv::Range &rowRange, const cv::Range &colRange);
 
-功能介绍：crop，resize，rotate的全功能接口。先在原图中裁剪指定区域，然后缩放，最后旋转。采用vps加速。
+Function Introduction: A full-function interface for crop, resize, and rotate. First, crop the specified area in the original image, then resize, and finally rotate. Accelerated by VPS.
 
-返回值：成功返回0，失败返回非零。
+Return Value: Returns 0 if successful, non-zero if failed.
 
-注意：dst_h，dst_w是resize后的大小。无需考虑旋转后的宽高，接口会自动处理。例如，resize后的宽高为1920*1080，dst_w，dst_h传参分别为1920，1080。
+Note: dst_h, dst_w are the size after resize. Do not need to consider the width and height after rotation, the interface will handle it automatically. For example, the size after resize is 1920*1080, and dst_w, dst_h are passed as 1920, 1080.
 
-参数：
-| 参数名   | 解释                 |
-| -------- | -------------------- |
-| src      | 原nv12格式的图像矩阵 |
-| dst      | 用于接收处理后的图像矩阵 |
-| dst_h     | resize后的高         |
-| dst_w     | resize后的宽         |
-| rotate   | 旋转角度的枚举，为0时关闭rotate  |
-| rowRange | crop的纵向坐标范围，范围为0时关闭crop|
-| colRange | crop的横向坐标范围，范围为0时关闭crop|
+Parameters:
+| Parameter    | Explanation                 |
+| ------------ | ---------------------------- |
+| src          | Original image matrix in nv12 format |
+| dst          | Matrix to receive the processed image |
+| dst_h        | Height after resize          |
+| dst_w        | Width after resize           |
+| rotate       | Enumeration of rotation angles, turn off rotate when set to 0 |
+| rowRange     | Vertical coordinate range for crop, turn off crop when set to 0 |
+| colRange     | Horizontal coordinate range for crop, turn off crop when set to 0 |
 
-std::shared_ptr<ImageInfo> hobotcv_imgproc(const char *src,int src_h,int src_w,int dst_h,int dst_w,ROTATION_E rotate,const cv::Range &rowRange,const cv::Range &colRange);
+std::shared_ptr<ImageInfo> hobotcv_imgproc(const char *src, int src_h, int src_w, int dst_h, int dst_w, ROTATION_E rotate, const cv::Range &rowRange, const cv::Range &colRange);
 
-功能介绍：crop，resize，rotate的全功能接口。先在原图中裁剪指定区域，然后缩放，最后旋转。采用vps加速。输入输出图片数据为nv12数据的地址。
+Function Introduction: A full-function interface for crop, resize, and rotate. First, crop the specified area in the original image, then resize, and finally rotate. Accelerated by VPS. Input and output image data is in the form of nv12 data.
 
-返回值：成功返回处理后的图片数据指针，失败返回nullptr
+Return Value: Returns a pointer to the processed image data if successful, returns nullptr if failed.
 
-注意：dst_h，dst_w是resize后的大小。无需考虑旋转后的宽高，接口会自动处理。例如，resize后的宽高为1920*1080，dst_w，dst_h传参分别为1920，1080。
+Note: dst_h, dst_w are the size after resize. Do not need to consider the width and height after rotation, the interface will handle it automatically. For example, the size after resize is 1920*1080, and dst_w, dst_h are passed as 1920, 1080.
 
-参数：
-| 参数名   | 解释                 |
-| -------- | -------------------- |
-| src      | 输入图片数据地址      |
-| src_h    | 输入图片高            |
-| src_w     | 输入图片宽           |
-| dst_h     | resize后的高         |
-| dst_w     | resize后的宽         |
-| rotate   | 旋转角度的枚举，为0时关闭rotate  |
-| rowRange | crop的纵向坐标范围，范围为0时关闭crop|
-| colRange | crop的横向坐标范围，范围为0时关闭crop|
+Parameters:
+| Parameter    | Explanation            |
+| ------------ | ---------------------- |
+| src          | Address of the input image data |
+| src_h        | Height of the input image |
+| src_w        | Width of the input image |
+| dst_h        | Height after resize    |
+| dst_w        | Width after resize     |
+| rotate       | Enumeration of rotation angles, turn off rotate when set to 0 || rowRange | Vertical coordinate range of crop, closing crop when the range is 0 |
+| colRange | Horizontal coordinate range of crop, closing crop when the range is 0 |
 
 ### pyramid
 
 int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr);
 
-功能介绍：金字塔缩放的功能接口。通过参数attr配置缩小以及roi区域。缩小图像层数24(0~23)层，其中 0、4、8、12、16、20层为基础Base层，基于原图片进行缩放，基础层的每一层size都是上一基础层的1/2。其余层为ROI层，ROI层基于Base层作缩小(1、2、3 层基于Base0层，5、6、7 层基于Base4层，以此类推)各层可以单独使能，缩放区域、缩放系数可配置。
+Function: Interface for pyramid scaling. Configure reduction and ROI region through parameters attr. The image is reduced to 24 layers (0~23), where layers 0, 4, 8, 12, 16, 20 are basic Base layers, based on the original image for scaling, and the size of each layer in the base layer is half of the previous base layer. The remaining layers are ROI layers, which are reduced based on the Base layer (layers 1, 2, 3 are based on Base0 layer, layers 5, 6, 7 are based on Base4 layer, and so on). Each layer can be individually enabled, and the scaling region and scaling factor can be configured.
 
-返回值：成功返回0，失败返回非零。
+Return Value: Returns 0 on success, non-zero on failure.
 
-注意：最大输入图像4096x4096，最小输入图像64x64。最大输出图像2048x2048,最小输出图像48x32。基于vps硬件要求，必须使能Base0和Base4层。
+Note: Maximum input image size is 4096x4096, minimum input image size is 64x64. Maximum output image size is 2048x2048, minimum output image size is 48x32. Due to VPS hardware requirements, Base0 and Base4 layers must be enabled.
 
-roi层输出计算公式：targetW = (roi_width - 1) x 64 / (64 + 1) + 1; targetH = (((roi_height / 2 - 1) x 64 / (64 + 1)) + 1) x 2; tag宽高向下取偶，如得到一个401 x 401的size，会向下取偶得到400 x 400
+ROI layer output calculation formula: targetW = (roi_width - 1) x 64 / (64 + 1) + 1; targetH = (((roi_height / 2 - 1) x 64 / (64 + 1)) + 1) x 2; adjust target width and height to even numbers, if a size of 401 x 401 is obtained, it will be adjusted to 400 x 400
 
-参数：
-| 参数名   | 解释                 |
+Parameters:
+| Parameter | Description |
 | -------- | --------------------|
-| src      | 原nv12格式的图像矩阵 |
-| output | 金字塔缩放后的图像输出指针，内存由接口调用方提供 |
-| attr | 金字塔缩放层的属性配置参数 |
+| src | Original image matrix in nv12 format |
+| output | Pointer to the output image after pyramid scaling, memory provided by the caller |
+| attr | Attributes configuration for pyramid scaling layers |
 
-PyramidAttr：金字塔缩放配置
-| 参数名        | 解释                            |
+PyramidAttr: Configuration for pyramid scaling
+| Parameter | Description |
 | -------------| -----------------------------------|
-| timeout      | 获取结果超时时间，单位ms             |
-| ds_info      | pyramid缩小层的配置信息，基础层加roi层共24层 |
+| timeout | Timeout for obtaining result, in milliseconds |
+| ds_info | Configuration information for pyramid reduction layers, including base and roi layers totaling 24 layers |
 
-ds_info中的factor取值范围为0~63。对于基础层，factor为0时表示disable该层，非0时表示使能该层。对于roi层，factor为0时表示disable该层，非0时为该roi层的计算因子，该层的输出size可通过roi层输出计算公式获取。
+The range of factor in ds_info is from 0 to 63. For the base layers, factor is 0 to disable the layer, and non-zero to enable the layer. For the roi layers, factor is 0 to disable the layer, and non-zero is the calculation factor for that roi layer. The output size of the layer can be obtained through the roi layer output calculation formula.
 
-OutputPyramid：金字塔缩放图片输出数据结构
-| 参数名        | 解释                            |
+OutputPyramid: Data structure for output of pyramid-scaled images
+| Parameter | Description |
 | -------------| -----------------------------------|
-| isSuccess    | 接口处理图片是否成功，0：失败 1：成功 |
-| pym_out      | pyramid缩放输出图片信息的数组，每一层是否有输出取决于PyramidAttr中对该层的factor配置是否为0 |
+| isSuccess | Whether the interface successfully processes the image, 0: Failure, 1: Success |
+| pym_out | Array of information about the output of pyramid scaling, whether there is output for each layer depends on the factor configuration for that layer in PyramidAttr |
 
-int hobotcv_pymscale(const char *src,int src_h,int src_w,OutputPyramid *output,const PyramidAttr &attr);
+int hobotcv_pymscale(const char *src, int src_h, int src_w, OutputPyramid *output, const PyramidAttr &attr);
 
-功能介绍：金字塔缩放的功能接口。具体功能与上一个接口"int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr)"相同，区别在输入图片为nv12格式图片的数据地址。
+Function: Interface for pyramid scaling. The function is the same as the previous interface "int hobotcv_pymscale(const cv::Mat &src, OutputPyramid *output, const PyramidAttr &attr)", but the input image is in nv12 format data address.
 
-返回值：成功返回0，失败返回非零。
+Return Value: Returns 0 on success, non-zero on failure.
 
-参数：
-| 参数名   | 解释                 |
+Parameters:
+| Parameter | Description |
 | -------- | --------------------|
-| src      | 输入图片数据地址 |
-| src_h    | 输入图片高            |
-| src_w     | 输入图片宽           |
-| output | 金字塔缩放后的图像输出指针，内存由接口调用方提供 |
-| attr | 金字塔缩放层的属性配置参数 |
+| src | Input image data address |
+| src_h | Input image height |
+| src_w | Input image width |
+| output | Pointer to the output image after pyramid scaling, memory provided by the caller |
+| attr | Attributes configuration for pyramid scaling layers |### Border Padding
 
-### 边界填充
-
+```cpp
 HobotcvImagePtr hobotcv_BorderPadding(const char *src, const int &src_h, const int &src_w, const HobotcvPaddingType type, const PaddingArea &area, const uint8_t value = 0);
+```
 
-功能介绍：对传入的原图片进行padding操作，支持指定填充区域和填充值。支持HOBOTCV_CONSTANT、HOBOTCV_REPLICATE和HOBOTCV_REFLECT三种填充方式。
-          当type为HOBOTCV_CONSTANT时接口传入的value有效，用value 的数值进行填充。
-          当type为HOBOTCV_REPLICATE时，使用原图中最边界的像素值进行填充(例如：例如：aaaaaa|abcdefgh|hhhhhhh)。
-          当type为HOBOTCV_REFLECT时，以原图边界为轴的镜像填充(例如：fedcba|abcdefgh|hgfedcb)
-          padding后的图片高h = src_h + area.top + area.bottom, 图片宽w = src_w + area.left + area.right
-          padding成功后，通过返回值返回padding后的图片数据指针。
+Function Introduction: Performs padding operation on the input original image, supports specifying padding area and value. Supports three types of padding: HOBOTCV_CONSTANT, HOBOTCV_REPLICATE, and HOBOTCV_REFLECT.
+- When type is HOBOTCV_CONSTANT, the value passed into the interface is valid, and the padding is done using the numerical value of 'value'.
+- When type is HOBOTCV_REPLICATE, the padding is done using the pixel values from the edges of the original image (e.g., aaaaaaa|abcdefgh|hhhhhhh).
+- When type is HOBOTCV_REFLECT, the padding is done by mirroring with the original image boundary as axis (e.g., fedcba|abcdefgh|hgfedcb).
+- The height 'h' of the padded image is src_h + area.top + area.bottom, and the width 'w' is src_w + area.left + area.right.
+- Upon successful padding, the function returns a pointer to the padded image data.
 
-返回值：成功返回输出图片数据指针，失败返回nullptr
+Return Value: Returns a pointer to the output image data on success, or nullptr on failure.
 
-参数：
-| 参数名   | 解释                 |
-| -------- | --------------------|
-| src      | 原nv12格式的图像数据 |
-| src_h    | 原图高              |
-| src_w    | 原图宽              |
-| type     | 填充方式            |
-| area     | 填充区域，支持指定上下左右区域 |
-| value    | 填充的像素值，取值0~255，默认为0 |
+Parameters:
+| Parameter | Description                           |
+| --------- | -------------------------------------- |
+| src       | Original image data in nv12 format    |
+| src_h     | Height of the original image          |
+| src_w     | Width of the original image           |
+| type      | Padding type                          |
+| area      | Padding area, supporting specified top, bottom, left, and right areas |
+| value     | Pixel value for padding, range 0~255, default is 0 |
 
-### 高斯滤波(BPU加速)
+### Gaussian Blur (Accelerated by BPU)
 
+```cpp
 int HobotCVGaussianBlurCreate(HobotGaussianBlurParam param, HobotCVGaussianBlurHandle *phandle);
+```
 
-功能介绍：创建高斯滤波的句柄。
+Function Introduction: Creates a handle for Gaussian blur.
 
-返回值：0表示成功，<0表示失败。
+Return Value: 0 indicates success, <0 indicates failure.
 
-参数：
+Parameters:
+| Parameter | Description           |
+| --------- | ---------------------- |
+| param     | Gaussian blur parameters |
+| --type    | Type of blur           |
+| --width   | Blur width             |
+| --height  | Blur height            |
+| --ksizeX  | Kernel width           |
+| --ksizeY  | Kernel height          |
+| --sigmaX  | Sigma value for width  |
+| --sigmaY  | Sigma value for height  |
+| phandle   | Handle returned upon successful creation |
 
-| 参数名   | 解释               |
-| -------- | ------------------ |
-| param：  | 高斯滤波           |
-| --type   | 滤波类型           |
-| --width  | 滤波的宽           |
-| --height | 滤波的高           |
-| --ksizeX | 滤波核的宽         |
-| --ksizeY | 滤波核的高         |
-| --sigmaX | sigma的宽          |
-| --sigmaY | sigma的高          |
-| phandle  | 创建成功返回的句柄 |
-
-注：当前版本支持的参数范围如下：
-
-- 滤波类型：高斯滤波
-- 支持的数据类型：int16
-- 支持的分辨率：320x240。
-- 滤波核：高斯3x3
+Note: The current version supports the following parameter ranges:
+- Blur type: Gaussian blur
+- Supported data type: int16- Supported resolution: 320x240.
+- Filter kernel: Gaussian 3x3
 - sigmax: 0.
 - sigmay: 0.
 
-int HobotCVGaussianBlurProcess( HobotCVGaussianBlurHandle *phandle，cv::Mat *src，cv::Mat *dst);
+```cpp
+int HobotCVGaussianBlurProcess(HobotCVGaussianBlurHandle *phandle, cv::Mat *src, cv::Mat *dst);
 
-功能介绍：创建高斯滤波的句柄。
+Function: Create a handle for Gaussian blur.
 
-返回值：0表示成功，<0表示失败。
+Return: 0 for success, <0 for failure.
 
-参数：
+Parameters:
 
-| 参数名  | 解释                |
-| ------- | ------------------- |
-| phandle | 创建成功返回的句柄  |
-| src     | 原始的TOF数据矩阵   |
-| dst     | 滤波后的TOF数据矩阵 |
+| Parameter | Explanation           |
+| --------- | --------------------- |
+| phandle   | Handle returned upon successful creation   |
+| src       | Original TOF data matrix   |
+| dst       | TOF data matrix after filtering  |
 
-int HobotCVGaussianBlurDestroy( HobotCVGaussianBlurHandle *phandle);
+int HobotCVGaussianBlurDestroy(HobotCVGaussianBlurHandle *phandle);
 
-功能介绍：创建高斯滤波的句柄。
+Function: Destroy the handle for Gaussian blur.
 
-返回值：0表示成功，<0表示失败。
+Return: 0 for success, <0 for failure.
 
-参数：
+Parameters:
 
-| 参数名  | 解释                         |
-| ------- | ---------------------------- |
-| phandle | 创建成功返回的句柄，用于释放 |
+| Parameter | Explanation                         |
+| --------- | ------------------------------------|
+| phandle   | Handle returned upon successful creation, used for releasing |
 
-### 高斯滤波(neon加速)
+### Gaussian Blur (NEON acceleration)
 
 int HobotGaussianBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
 
-功能介绍：高斯滤波neon加速处理。
+Function: Gaussian blur processing accelerated by NEON.
 
-返回值：0表示成功，-2表示非x3平台运行，-1表示参数错误。
+Return: 0 for success, -2 for non x3 platform, -1 for parameter error.
 
-参数：
-| 参数名  | 解释                         |
-| ------- | ---------------------------- |
-| src | 输入的原始数据矩阵，目前只支持CV_16SC1和CV_16UC1数据类型 |
-| dst | 高斯滤波处理后输出数据矩阵 |
-| ksize | 高斯滤波器模板大小，目前只支持3x3和5x5大小 |
+Parameters:
+| Parameter | Explanation                                |
+| --------- | -------------------------------------------|
+| src       | Input original data matrix, currently only supports CV_16SC1 and CV_16UC1 data types |
+| dst       | Output data matrix after Gaussian blur processing |
+| ksize     | Size of Gaussian filter template, currently supports only 3x3 and 5x5 size |
 
-### 均值滤波
+### Mean Blur
 
 int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
+```Function Introduction: Neon accelerated processing for mean filter.
 
-功能介绍：均值滤波neon加速处理。
+Return Value: 0 indicates success, -2 means not running on x3 platform, -1 indicates parameter error.
 
-返回值：0表示成功，-2表示非x3平台运行，-1表示参数错误。
-
-参数：
-| 参数名  | 解释                         |
-| ------- | ---------------------------- |
-| src | 输入的原始数据矩阵，目前只支持CV_16SC1和CV_16UC1数据类型 |
-| dst | 均值滤波处理后输出数据矩阵 |
-| ksize | 均值滤波器模板大小，目前只支持3x3和5x5大小 |
+Parameters:
+| Parameter Name | Explanation |
+| -------------- | ----------- |
+| src | Input original data matrix, currently only supports CV_16SC1 and CV_16UC1 data types |
+| dst | Output data matrix after mean filter processing |
+| ksize | Size of mean filter template, currently supports 3x3 and 5x5 sizes |
 
 ## hobotcv_benchmark
-[hobotcv_benchmark相关介绍](./benchmark/README.md)
+[Introduction to hobotcv_benchmark](./benchmark/README.md)
 
-## 运行
-- 编译成功后，将生成的install路径拷贝到地平线X3开发板上（如果是在X3上编译，忽略拷贝步骤），并执行如下命令运行。
+## Run
+- After successful compilation, copy the generated install path to Horizon X3 development board (ignore the copying step if compiling on X3), and execute the following command to run.
 
-## X3 Ubuntu系统上运行
+## Running on X3 Ubuntu system
 
 ```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/local_setup.bash
-# config中为example使用的模型，回灌使用的本地图片
-# 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
-cp -r install/lib/hobot_cv/config/ .
+# "config" specifies the model used for examples, and local images for the process.
+# Copy according to the actual installation path (copy command on X3 Ubuntu is: cp -r install/hobot_cv/lib/hobot_cv/config/ .).
 
-# 启动crop&resize&rotate&pyramid launch文件
+# Launch crop & resize & rotate & pyramid launch file
 ros2 launch hobot_cv hobot_cv_crop_resize_rotate_pyramid.launch.py
 
-# 启动test_gaussian_blur launch文件
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波。
+# Launch test_gaussian_blur launch file
+Implement Gaussian blur on images in TOF format through hobot_cv interface.
 ros2 launch hobot_cv hobot_cv_gaussian_blur.launch.py
 
-# 启动neon_example launch文件
-使用本地tof格式图片通过hobot_cv接口时实现图片的高斯滤波与均值滤波，采用neon加速
+# Launch neon_example launch file
+Implement Gaussian blur and mean filter on images in TOF format through hobot_cv interface using neon acceleration.
 ros2 launch hobot_cv hobot_cv_neon_blur.launch.py
 
 ```
 
-## X3 yocto系统上运行
+## Running on X3 yocto system
 
 ```
 export ROS_LOG_DIR=/userdata/
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./install/lib/
 
-# config中为example使用的模型，回灌使用的本地图片
+# "config" specifies the model used for examples, and local images for the process.
 cp -r install/lib/hobot_cv/config/ .
 
-# 使用本地JPEG格式图片通过hobot_cv接口实现图片的crop，resize，rotate并以JPEG格式存储变换后的图片
+# Implement crop, resize, and rotate on local images in JPEG format through hobot_cv interface and store the transformed images in JPEG format.
 ./install/lib/hobot_cv/example
-
-# 运行模式2：
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波，采用bou加速。
+```# Run Mode 2:
+Implement Gaussian blur on local TOF format images using the Hobot_cv interface, with acceleration by Bou.
 ros2 run hobot_cv test_gaussian_blur
 
-# 运行模式3：
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波与均值滤波，采用neon加速。
+# Run Mode 3:
+Implement Gaussian blur and mean blur on local TOF format images using the Hobot_cv interface, with acceleration by Neon.
 ros2 run hobot_cv neon_example
 
 ```
 
-## X86 Ubuntu系统上运行
+## Running on X86 Ubuntu System
 
 ```
 export COLCON_CURRENT_PREFIX=./install
 source ./install/local_setup.bash
-# config中为example使用的模型，回灌使用的本地图片
-# 根据实际安装路径进行拷贝（X3 Ubuntu中编译拷贝命令为cp -r install/hobot_cv/lib/hobot_cv/config/ .）。
+# The config file is for the model used in the example and the local images for inference
+# Copy according to the actual installation path (copy command for compilation in X3 Ubuntu is cp -r install/hobot_cv/lib/hobot_cv/config/ .).
 cp -r install/lib/hobot_cv/config/ .
 
-
-# 启动resize launch文件
+# Start the resize launch file
 ros2 launch hobot_cv hobot_cv_resize.launch.py
 
 ```
 
-# 结果分析
+# Results Analysis
 
-## X3结果展示
+## X3 Results Display
 
-### crop&resize&rotate&pyramid
+### Crop & Resize & Rotate & Pyramid
 
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
@@ -497,62 +489,54 @@ ros2 launch hobot_cv hobot_cv_resize.launch.py
 [example-1] [INFO] [1655951548.943125584] [example]: crop image to 960x540 pixels and resize image to 1920x1080 pixels, time cost: 15 ms
 [example-1]
 [example-1] [INFO] [1655951549.077968876] [example]: rotate image 180 , time cost: 134 ms
+[example-1][example-1] [INFO] [1655951549.315988376] [example]: second rotate image 180 , time cost: 38 ms
 [example-1]
-[example-1] [INFO] [1655951549.315988376] [example]: second rotate image 180 , time cost: 38 ms
+[example-1] [INFO] [1655951549.638380626] [example]: crop image to 960x540 pixels and resize image to 1440x800 pixels and rotate 90, time cost: 322 ms
 [example-1]
-[example-1] [INFO] [1655951549.638380626] [example]: crop image to 960x540 pixels  and resize image to 1440x800 pixels and rotate 90, time cost: 322 ms
+[example-1] [INFO] [1655951549.764873834] [example]: crop image to 960x540 pixels and resize image to 1440x800 pixels and rotate 90, time cost: 20 ms
 [example-1]
-[example-1] [INFO] [1655951549.764873834] [example]: crop image to 960x540 pixels  and resize image to 1440x800 pixels and rotate 90, time cost: 20 ms
+[example-1] [INFO] [1655951550.045702293] [example]: pyramid image, time cost: 280 ms
 [example-1]
-[example-1] [INFO] [1655951550.045702293] [example]: pyramid image , time cost: 280 ms
-[example-1]
-[example-1] [INFO] [1655951550.327614543] [example]: pyramid image , time cost: 19 ms
-[example-1]
+[example-1] [INFO] [1655951550.327614543] [example]: pyramid image, time cost: 19 ms
 [INFO] [example-1]: process has finished cleanly [pid 2840]
-```
 
-根据log显示，测试程序完成了对本地1920x1080分辨率图片resize，crop，crop&resize，rotate，crop&resize&rotate，pyramid的处理,同一接口分别调用了两次。两次耗时对比如下
 
-| 图片处理                               | 第一次运行耗时 | 第二次运行耗时 |
-| ------------------------------------- | ------------- | ------------- |
-| 1920x1080 resize到960x540              | 280ms        | 14ms          |
-| 1920x1080 crop出960x540                | 2ms          | 1ms           |
-| crop出960x540 resize到1920x1080        | 39ms         | 15ms          |
-| 1920x1080旋转180度                     | 134ms        | 38ms          |
-| crop出960x540 resize到1440x800 旋转90度 | 322m        | 20ms          |
-| pyramid基础层缩小图片                   | 280m        | 19ms          |
+Based on the log, the test program processed the local 1920x1080 resolution image by resize, crop, crop & resize, rotate, crop & resize & rotate, and pyramid methods. The same interface was called twice. The time comparison of the two runs is as follows:
 
-因为第一次运行，需要对vps硬件进行配置所以耗时较多，如果不再更改硬件配置属性，则硬件直接进行处理，耗时就会显著降低。
+| Image Processing                     | 1st Run Time | 2nd Run Time |
+| ------------------------------------ | ------------ | ------------ |
+| 1920x1080 resize to 960x540          | 280ms        | 14ms         |
+| 1920x1080 crop to 960x540            | 2ms          | 1ms          |
+| Crop 960x540 resize to 1920x1080     | 39ms         | 15ms         |
+| 1920x1080 rotate 180 degrees         | 134ms        | 38ms         |
+| Crop 960x540 resize to 1440x800 and rotate 90 degrees | 322ms | 20ms   |
+| Downsizing image with pyramid        | 280ms        | 19ms         |
 
-原图展示：
+For the first run, hardware configuration was required, leading to longer processing time. If there are no further changes to the hardware settings, direct processing by the hardware will significantly reduce the processing time.
+
+Original image:
 ![image](./config/test.jpg)
 
-resize效果展示：
-
+Resize result:
 ![image](./imgs/resize.jpg)
 
-crop效果展示：
-
+Crop result:
 ![image](./imgs/crop.jpg)
 
-crop&resize效果展示：
-
+Crop & resize result:
 ![image](./imgs/cropResize.jpg)
 
-rotate效果展示：
-
+Rotate result:
 ![image](./imgs/rotate.jpg)
 
-crop&resize&rotate效果展示:
-
+Crop, resize & rotate result:
 ![image](./imgs/cropResizeRotate.jpg)
 
-pyramid缩小效果展示,每层为上一层的1/2：
-![image](./imgs/pym/pym_ds.jpg)
+Pyramid downsizing effect, each layer is half of the previous layer:![image](./imgs/pym/pym_ds.jpg)
 
 ### resize
-启动命令：ros2 launch hobot_cv hobot_cv_resize.launch.py
-输出结果：
+Launch command: ros2 launch hobot_cv hobot_cv_resize.launch.py
+Output:
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [resize_example-1]: process started with pid [120089]
@@ -564,17 +548,17 @@ pyramid缩小效果展示,每层为上一层的1/2：
 [INFO] [resize_example-1]: process has finished cleanly [pid 120089]
 ```
 
-根据log显示，example对1920x1080分辨率图片进行了三次resize操作，前两次使用输入输出图片为cv::Mat的接口，第三次使用输入输出图片为nv12数据指针的接口，三次resize耗时统计如下：
+According to the log, example resized the 1920x1080 resolution image three times. The first two times used the cv::Mat interface for input and output images, while the third time used the nv12 data pointer interface for input and output images. The time statistics for the three resize operations are as follows:
 
-| 图片处理                               | 第一次运行耗时 | 第二次运行耗时 | 第三次运行耗时 |
-| ------------------------------------- | ------------- | ------------- |------------- |
-| 1920x1080 resize到960x540              | 51ms         | 12ms          | 12ms          |
+| Image Processing         | 1st Run Time | 2nd Run Time | 3rd Run Time |
+| ------------------------- | ------------- | ------------- | ------------- |
+| 1920x1080 to 960x540      | 51ms         | 12ms         | 12ms         |
 
-因为第一次运行，需要对硬件进行配置所以耗时较多，如果不再更改硬件配置属性，则硬件直接进行处理，耗时就会显著降低。resize的两种接口，耗时无明显变化。
+The first run took more time due to the need for hardware configuration. Subsequent runs with the same hardware configuration showed significantly reduced processing time. The time taken for resize using the two interfaces did not show significant changes.
 
 ### crop
-启动命令：ros2 launch hobot_cv hobot_cv_crop.launch.py
-输出结果：
+Launch command: ros2 launch hobot_cv hobot_cv_crop.launch.py
+Output:
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [crop_example-1]: process started with pid [117973]
@@ -584,36 +568,39 @@ pyramid缩小效果展示,每层为上一层的1/2：
 [INFO] [crop_example-1]: process has finished cleanly [pid 117973]
 ```
 
-根据log显示，example对1920x1080分辨率图片进行了三次crop出960x540的操作，前两次使用输入输出图片为cv::Mat的接口，第三次使用输入输出图片为nv12数据指针的接口，三次resize耗时统计如下：
-| 图片处理                               | 第一次运行耗时 | 第二次运行耗时 | 第三次运行耗时 |
-| ------------------------------------- | ------------- | ------------- |------------- |
-| 1920x1080 crop出960x540              | 2ms         | 2ms          | 3ms          |
+According to the log, example cropped the 1920x1080 resolution image to 960x540 three times. The first two times used the cv::Mat interface for input and output images, while the third time used the nv12 data pointer interface for input and output images. The time statistics for the three crop operations are as follows:
 
-因为crop操作时直接在原图中裁剪，未经过硬件加速，所以每次接口调用耗时无明显差别。第三次使用输入输出图片为nv12数据指针的接口，在接口中涉及到内存的申请过程，所以耗时可能会由略为增加。
+| Image Processing         | 1st Run Time | 2nd Run Time | 3rd Run Time |
+| ------------------------- | ------------- | ------------- | ------------- |
+| 1920x1080 to 960x540      | 2ms          | 2ms          | 3ms          |
+
+Since cropping directly modifies the original image without hardware acceleration, the interface call time showed no significant difference between runs. The third run using the nv12 data pointer interface may have slightly increased time due to memory allocation in the interface.
 
 ### rotate
-启动命令：ros2 launch hobot_cv hobot_cv_rotate.launch.py
-输出结果：
+Launch command: ros2 launch hobot_cv hobot_cv_rotate.launch.py
+Output:
 ```
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [rotate_example-1]: process started with pid [121764]
 [rotate_example-1] [INFO] [1666364588.685647265] [example]: rotate image 180 , time cost: 163 ms
+``````
 [rotate_example-1]
-[rotate_example-1] [INFO] [1666364588.937273432] [example]: second rotate image 180 , time cost: 38 ms
+[INFO] [1666364588.937273432] [example]: second rotate image 180 , time cost: 38 ms
 [rotate_example-1]
-[rotate_example-1] [INFO] [1666364588.975745807] [example]: nv12 interface rotate image 180 , time cost: 38 ms
+[INFO] [1666364588.975745807] [example]: nv12 interface rotate image 180 , time cost: 38 ms
 [rotate_example-1]
 [INFO] [rotate_example-1]: process has finished cleanly [pid 121764]
-```
-根据log显示，example对1920x1080分辨率图片进行了三次旋转180度的操作，前两次使用输入输出图片为cv::Mat的接口，第三次使用输入输出图片为nv12数据指针的接口，三次resize耗时统计如下：
-| 图片处理             | 第一次运行耗时 | 第二次运行耗时 | 第三次运行耗时 |
-| --------------------| ------------- | ------------- |------------- |
-| 1920x1080 旋转180度  | 163ms           | 38ms          | 38ms          |
+
+
+根据log显示，example performed three rotations of 180 degrees on an image with a resolution of 1920x1080. The first two rotations used interfaces with cv::Mat as input and output images, while the third rotation used an interface with nv12 data pointers for input and output images. The time statistics for the three rotations are as follows:
+| Image Processing            | First Run Time | Second Run Time | Third Run Time |
+| --------------------------- | -------------- | --------------- | -------------- |
+| 1920x1080 Rotate 180 degrees| 163ms          | 38ms            | 38ms           |
+
 
 ### padding
-example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
-输出结果：
-```
+example launch command: ros2 launch hobot_cv hobot_cv_padding.launch.py
+Output:
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [padding_example-1]: process started with pid [219943]
 [padding_example-1] [INFO] [1666363731.418628584] [example]: 480 x 270 hobot_cv constant padding  top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
@@ -629,112 +616,106 @@ example启动命令：ros2 launch hobot_cv hobot_cv_padding.launch.py
 [padding_example-1] [INFO] [1666363731.594738500] [example]: 480 x 270 opencv reflect padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
 [padding_example-1]
 [INFO] [padding_example-1]: process has finished cleanly [pid 219943]
-```
 
-根据log显示，测试程序完成了对本地480x270分辨率图片的上下左右区域各填充100长度，
-hobot_cv三种填充方式与分别对应的opencv填充耗时对比如下
-|    填充方式     | hobot_cv耗时 | opencv耗时 |
-|  ------------- | ------------ | ---------- |
-|   CONSTANT     |    1ms       |    2ms     |
-|   REPLICATE    |    1ms       |    1ms     |
-|   REFLECT      |    3ms       |    1ms     |
 
-原图展示：
+According to the log, the test program completed padding the top, bottom, left, and right regions of a local 480x270 resolution image with a length of 100 each. The time comparisons between hobot_cv and opencv padding methods are as follows:
+| Padding Method    | hobot_cv Time | opencv Time |
+| ----------------- | ------------- | ----------- |
+| CONSTANT          | 1ms           | 2ms         |
+| REPLICATE         | 1ms           | 1ms         |
+| REFLECT           | 3ms           | 1ms         |
+
+Original Image:
 ![image](./config/480x270.jpg)
 
-HOBOTCV_CONSTANT方式填充展示：
+HOBOTCV_CONSTANT Padding:
 ![image](./imgs/cv_constant_padding.jpg)
 
-HOBOTCV_REPLICATE方式填充展示：
+HOBOTCV_REPLICATE Padding:
 ![image](./imgs/cv_replicate_padding.jpg)
-
-HOBOTCV_REFLECT方式填充展示：
+```HOBOTCV_REFLECT fill display:
 ![image](./imgs/cv_reflect_padding.jpg)
 
-### 高斯滤波bpu加速
+### Gaussian Blurring Accelerated by BPU
 
 ```
-输出结果：
-
+Output:
 ===================
-image name :images/frame1_4.png
-infe cost time:1314
-guss_time cost time:2685
-hobotcv save rate:0.510615
+image name: images/frame1_4.png
+infe cost time: 1314
+guss_time cost time: 2685
+hobotcv save rate: 0.510615
 
-analyse_result start 
+analysis_result start
 ---------GaussianBlur
-out_filter type:2,cols:320,rows:240,channel:1
-cls_filter type:2,cols:320,rows:240,channel:1
-out_filter minvalue:96,max:2363
-out_filter min,x:319,y:115
-out_filter max,x:147,y:239
-cls_filter minvalue:96,max:2364
-cls_filter min,x:319,y:115
-cls_filter max,x:147,y:239
+out_filter type: 2, cols: 320, rows: 240, channel: 1
+cls_filter type: 2, cols: 320, rows: 240, channel: 1
+out_filter min value: 96, max: 2363
+out_filter min, x: 319, y: 115
+out_filter max, x: 147, y: 239
+cls_filter min value: 96, max: 2364
+cls_filter min, x: 319, y: 115
+cls_filter max, x: 147, y: 239
 
 diff diff diff
-mat_diff minvalue:0,max:2
-mat_diff min,x:2,y:0
-mat_diff max,x:110,y:14
+mat_diff min value: 0, max: 2
+mat_diff min, x: 2, y: 0
+mat_diff max, x: 110, y: 14
 
-error sum:8.46524e+06,max:2,mean_error:0.439232
-analyse_result,time_used_ms_end:2
-analyse_result end 
-
-------------------------- 
+error sum: 8.46524e+06, max: 2, mean error: 0.439232
+analysis_result, time_used_ms_end: 2
+analysis_result end
 ```
 
-其中：
+Where:
 
-infe cost time:1314　//表示hobotcv加速的高斯滤波耗时1314微秒．
+infe cost time: 1314 // Represents the time of Gaussian blurring accelerated by HOBOTCV, taking 1314 microseconds.
 
-guss_time cost time:2685　//表示opencv的高斯滤波耗时2685微秒．
+guss_time cost time: 2685 // Represents the time of Gaussian blurring using OpenCV, taking 2685 microseconds.
 
-hobotcv save rate = （guss_time cost time - infe cost time）/ guss_time cost time = 0.510615
+hobotcv save rate = (guss_time cost time - infe cost time) / guss_time cost time = 0.510615
 
-从以上比较结果，经过hobotcv加速后性能提升50%。
+From the comparison above, the performance is improved by 50% with HOBOTCV acceleration.
 
-error sum:8.46524e+06,max:2,mean_error:0.439232　//单张图片总误差是：8.46524e+06，单个像素最大误差是：２，平均误差：0.439232
+error sum: 8.46524e+06, max: 2, mean error: 0.439232 // The total error for a single image is 8.46524e+06, the maximum error for a single pixel is 2, and the average error is 0.439232.
 
-平均误差　＝　sum / (width * height) = 8.46524e+06 / (320 * 240)
+Average error = sum / (width * height) = 8.46524e+06 / (320 * 240)### Gaussian Filtering and Mean Filtering with Neon Acceleration
+Perform Gaussian filtering and mean filtering on images in local tof format using the hobot_cv interface, and log the comparison of the acceleration with neon and opencv processing efficiency.
 
-### 高斯滤波与均值滤波neon加速
-使用本地tof格式图片通过hobot_cv接口实现图片的高斯滤波和均值滤波，log输出为neon加速与opencv处理效率对比。
 ```
 [neon_example-1] ===================
-[neon_example-1] image name :config/tof_images/frame1_4.png
-[neon_example-1] hobotcv mean cost time:674
-[neon_example-1] opencv mean cost time:1025
-[neon_example-1] hobotcv mean save rate:0.342439
+[neon_example-1] image name: config/tof_images/frame1_4.png
+[neon_example-1] hobotcv mean cost time: 674
+[neon_example-1] opencv mean cost time: 1025
+[neon_example-1] hobotcv mean save rate: 0.342439
 [neon_example-1]
 [neon_example-1] analyse_result start
 [neon_example-1] ---------Mean_Blur
-[neon_example-1] error sum:8.43744e+06,max:1,mean_error:0.430833
+[neon_example-1] error sum: 8.43744e+06, max: 1, mean_error: 0.430833
 [neon_example-1]
-[neon_example-1] hobotcv gaussian cost time:603
-[neon_example-1] opencv gaussian cost time:2545
-[neon_example-1] hobotcv gaussian save rate:0.763065
+[neon_example-1] hobotcv gaussian cost time: 603
+[neon_example-1] opencv gaussian cost time: 2545
+[neon_example-1] hobotcv gaussian save rate: 0.763065
 [neon_example-1]
 [neon_example-1] analyse_result start
 [neon_example-1] ---------Gaussian_Blur
-[neon_example-1] error sum:9.13206e+06,max:1,mean_error:0.466302
+[neon_example-1] error sum: 9.13206e+06, max: 1, mean_error: 0.466302
 [neon_example-1]
 [neon_example-1] -------------------------
 ```
 
-hobotcv mean cost time:674 //hobotcv 均值滤波neon加速接口耗时674微秒。
-opencv mean cost time:1025 //表示opencv的均值滤波耗时1025微秒。
-hobotcv mean save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.342439
+hobotcv mean cost time: 674 // The time consumed by the hobotcv mean filtering neon acceleration interface is 674 microseconds.
+opencv mean cost time: 1025 // Indicates that opencv's mean filtering takes 1025 microseconds.
+hobotcv mean save rate = (opencv cost time - hobotcv cost time) / opencv cost time = 0.342439
 
-hobotcv gaussian cost time:603 //hobotcv 高斯滤波neon加速接口耗时603微秒。
-opencv gaussian cost time:2545 //表示opencv的高斯滤波耗时2545微秒。
-hobotcv gaussian save rate = （opencv cost time - hobotcv cost time）/ opencv cost time = 0.763065
+hobotcv gaussian cost time: 603 // The time consumed by the hobotcv Gaussian filtering neon acceleration interface is 603 microseconds.
+opencv gaussian cost time: 2545 // Indicates that opencv's Gaussian filtering takes 2545 microseconds.
+hobotcv gaussian save rate = (opencv cost time - hobotcv cost time) / opencv cost time = 0.763065
 
-从以上比较结果，经过hobotcv加速后均值滤波性能提升34%，高斯滤波性能提升76%。
+According to the comparison results above, after acceleration by hobotcv, the performance of mean filtering improves by 34%, and Gaussian filtering improves by 76%.
 
-error sum:8.43744e+06,max:1,mean_error:0.430833　//均值滤波单张图片总误差是：8.43744e+06，单个像素最大误差是：1，平均误差：0.430833
-均值滤波平均误差　＝　sum / (width x height) = 8.43744e+06 / (320 x 240)
+error sum: 8.43744e+06, max: 1, mean_error: 0.430833 // The total error of mean filtering in a single image is 8.43744e+06, the maximum error per pixel is 1, and the mean error is 0.430833.
+Mean filtering average error = sum / (width x height) = 8.43744e+06 / (320 x 240)
 
-error sum:9.13206e+06,max:1,mean_error:0.466302　//高斯滤波单张图片总误差是：9.13206e+06，单个像素最大误差是：1，平均误差：0.466302
-高斯滤波平均误差　＝　sum / (width x height) = 9.13206e+06 / (320 x 240)
+error sum: 9.13206e+06, max: 1, mean_error: 0.466302 // The total error of Gaussian filtering in a single image is 9.13206e+06, the maximum error per pixel is 1, and the mean error is 0.466302.
+Gaussian filtering average error = sum / (width x height) = 9.13206e+06 / (320 x 240)
