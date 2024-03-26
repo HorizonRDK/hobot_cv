@@ -447,7 +447,7 @@ cp -r install/lib/hobot_cv/config/ .
 
 # Implement crop, resize, and rotate on local images in JPEG format through hobot_cv interface and store the transformed images in JPEG format.
 ./install/lib/hobot_cv/example
-```# Run Mode 2:
+# Run Mode 2:
 Implement Gaussian blur on local TOF format images using the Hobot_cv interface, with acceleration by Bou.
 ros2 run hobot_cv test_gaussian_blur
 
@@ -588,16 +588,16 @@ Output:
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [rotate_example-1]: process started with pid [121764]
 [rotate_example-1] [INFO] [1666364588.685647265] [example]: rotate image 180 , time cost: 163 ms
-``````
 [rotate_example-1]
 [INFO] [1666364588.937273432] [example]: second rotate image 180 , time cost: 38 ms
 [rotate_example-1]
 [INFO] [1666364588.975745807] [example]: nv12 interface rotate image 180 , time cost: 38 ms
 [rotate_example-1]
 [INFO] [rotate_example-1]: process has finished cleanly [pid 121764]
-
+```
 
 example performed three rotations of 180 degrees on an image with a resolution of 1920x1080. The first two rotations used interfaces with cv::Mat as input and output images, while the third rotation used an interface with nv12 data pointers for input and output images. The time statistics for the three rotations are as follows:
+
 | Image Processing            | First Run Time | Second Run Time | Third Run Time |
 | --------------------------- | -------------- | --------------- | -------------- |
 | 1920x1080 Rotate 180 degrees| 163ms          | 38ms            | 38ms           |
@@ -606,6 +606,7 @@ example performed three rotations of 180 degrees on an image with a resolution o
 ### padding
 example launch command: ros2 launch hobot_cv hobot_cv_padding.launch.py
 Output:
+```
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [padding_example-1]: process started with pid [219943]
 [padding_example-1] [INFO] [1666363731.418628584] [example]: 480 x 270 hobot_cv constant padding  top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
@@ -621,7 +622,7 @@ Output:
 [padding_example-1] [INFO] [1666363731.594738500] [example]: 480 x 270 opencv reflect padding top:100 bottom: 100 left: 100 right: 100, time cost: 1 ms
 [padding_example-1]
 [INFO] [padding_example-1]: process has finished cleanly [pid 219943]
-
+```
 
 According to the log, the test program completed padding the top, bottom, left, and right regions of a local 480x270 resolution image with a length of 100 each. The time comparisons between hobot_cv and opencv padding methods are as follows:
 | Padding Method    | hobot_cv Time | opencv Time |
@@ -671,7 +672,6 @@ mat_diff max, x: 110, y: 14
 error sum: 8.46524e+06, max: 2, mean error: 0.439232
 analysis_result, time_used_ms_end: 2
 analysis_result end
-```
 
 Where:
 
@@ -688,7 +688,6 @@ error sum: 8.46524e+06, max: 2, mean error: 0.439232 // The total error for a si
 Average error = sum / (width * height) = 8.46524e+06 / (320 * 240)### Gaussian Filtering and Mean Filtering with Neon Acceleration
 Perform Gaussian filtering and mean filtering on images in local tof format using the hobot_cv interface, and log the comparison of the acceleration with neon and opencv processing efficiency.
 
-```
 [neon_example-1] ===================
 [neon_example-1] image name: config/tof_images/frame1_4.png
 [neon_example-1] hobotcv mean cost time: 674
@@ -708,7 +707,6 @@ Perform Gaussian filtering and mean filtering on images in local tof format usin
 [neon_example-1] error sum: 9.13206e+06, max: 1, mean_error: 0.466302
 [neon_example-1]
 [neon_example-1] -------------------------
-```
 
 hobotcv mean cost time: 674 // The time consumed by the hobotcv mean filtering neon acceleration interface is 674 microseconds.
 opencv mean cost time: 1025 // Indicates that opencv's mean filtering takes 1025 microseconds.
@@ -725,3 +723,4 @@ Mean filtering average error = sum / (width x height) = 8.43744e+06 / (320 x 240
 
 error sum: 9.13206e+06, max: 1, mean_error: 0.466302 // The total error of Gaussian filtering in a single image is 9.13206e+06, the maximum error per pixel is 1, and the mean error is 0.466302.
 Gaussian filtering average error = sum / (width x height) = 9.13206e+06 / (320 x 240)
+```
