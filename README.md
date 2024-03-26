@@ -49,17 +49,17 @@ hobot_cv Gaussian filtering and mean filtering interfaces support bpu and neon a
 - Compilation command:
 
   ```shell
-  export TARGET_ARCH=aarch64```shell
-export TARGET_TRIPLE=aarch64-linux-gnu
-export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
+  export TARGET_ARCH=aarch64
+  export TARGET_TRIPLE=aarch64-linux-gnu
+  export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
 
-colcon build --packages-select hobot_cv \
+  colcon build --packages-select hobot_cv \
    --merge-install \
    --cmake-force-configure \
    --cmake-args \
    --no-warn-unused-cli \
    -DCMAKE_TOOLCHAIN_FILE=`pwd`/robot_dev_config/aarch64_toolchainfile.cmake
-```
+  ```
 
 ## Compiling X86 Version on X86 Ubuntu System
 
@@ -99,7 +99,8 @@ colcon build --packages-select hobot_cv \
   hobotcv offers both BPU and VPS acceleration for image processing. Crop and resize can be accelerated using BPU or VPS, while rotate and pyramid are exclusively accelerated using VPS.
 
   Users can opt for BPU acceleration for less frequent image processing, as it does not require separate hardware property configuration. VPS acceleration, on the other hand, involves longer configuration of hardware properties.
-```If the camera captures images for crop & resize processing for model inference, you can choose to use VPS acceleration. In this case, the input-output configuration is relatively stable without major changes, and the normal image capture frequency of the camera will not trigger a timeout judgment.
+  
+  If the camera captures images for crop & resize processing for model inference, you can choose to use VPS acceleration. In this case, the input-output configuration is relatively stable without major changes, and the normal image capture frequency of the camera will not trigger a timeout judgment.
 
 ## Interface Description
 
@@ -350,6 +351,7 @@ Note: The current version supports the following parameter ranges:
 
 ```cpp
 int HobotCVGaussianBlurProcess(HobotCVGaussianBlurHandle *phandle, cv::Mat *src, cv::Mat *dst);
+```
 
 Function: Create a handle for Gaussian blur.
 
@@ -392,8 +394,11 @@ Parameters:
 
 ### Mean Blur
 
+```cpp
 int HobotMeanBlur(const cv::Mat &src, cv::Mat &dst, cv::Size ksize);
-```Function Introduction: Neon accelerated processing for mean filter.
+```
+
+Function Introduction: Neon accelerated processing for mean filter.
 
 Return Value: 0 indicates success, -2 means not running on x3 platform, -1 indicates parameter error.
 
@@ -499,7 +504,7 @@ ros2 launch hobot_cv hobot_cv_resize.launch.py
 [example-1]
 [example-1] [INFO] [1655951550.327614543] [example]: pyramid image, time cost: 19 ms
 [INFO] [example-1]: process has finished cleanly [pid 2840]
-
+```
 
 Based on the log, the test program processed the local 1920x1080 resolution image by resize, crop, crop & resize, rotate, crop & resize & rotate, and pyramid methods. The same interface was called twice. The time comparison of the two runs is as follows:
 
@@ -592,7 +597,7 @@ Output:
 [INFO] [rotate_example-1]: process has finished cleanly [pid 121764]
 
 
-根据log显示，example performed three rotations of 180 degrees on an image with a resolution of 1920x1080. The first two rotations used interfaces with cv::Mat as input and output images, while the third rotation used an interface with nv12 data pointers for input and output images. The time statistics for the three rotations are as follows:
+example performed three rotations of 180 degrees on an image with a resolution of 1920x1080. The first two rotations used interfaces with cv::Mat as input and output images, while the third rotation used an interface with nv12 data pointers for input and output images. The time statistics for the three rotations are as follows:
 | Image Processing            | First Run Time | Second Run Time | Third Run Time |
 | --------------------------- | -------------- | --------------- | -------------- |
 | 1920x1080 Rotate 180 degrees| 163ms          | 38ms            | 38ms           |
@@ -633,7 +638,8 @@ HOBOTCV_CONSTANT Padding:
 
 HOBOTCV_REPLICATE Padding:
 ![image](./imgs/cv_replicate_padding.jpg)
-```HOBOTCV_REFLECT fill display:
+
+HOBOTCV_REFLECT fill display:
 ![image](./imgs/cv_reflect_padding.jpg)
 
 ### Gaussian Blurring Accelerated by BPU
